@@ -38,6 +38,8 @@ window.KD_CONFIG = {
   hebcal: { geonameid: 6173577 },
   // Where the sky is drawn from (stars and moon in their real positions).
   place: { lat: 43.8361, lon: -79.4983 },
+  // PIN for the gear (Settings). Only keeps little fingers out; this file is public.
+  settingsPin: '0905',
   // The Tab S3 screen is AMOLED: a static image left on all night burns in.
   // Between these hours the screen goes black; a tap wakes it for 2 minutes.
   night: { from: 23, to: 6 },

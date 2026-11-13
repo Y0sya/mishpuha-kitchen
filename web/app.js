@@ -773,6 +773,46 @@
     showToast(null);
   });
 
+  // ---------- settings (gear → PIN → Settings) ----------
+  var pinTyped = '', pinTimer = null;
+  function closeSheets() { $('psheet').hidden = true; $('ssheet').hidden = true; clearTimeout(pinTimer); }
+  function drawDots(bad) {
+    [].forEach.call($('pdots').children, function (d, i) { d.className = i < pinTyped.length ? 'on' : ''; });
+    $('pdots').classList.toggle('bad', !!bad);
+  }
+  function openPin() {
+    pinTyped = ''; drawDots();
+    var keys = $('pkeys');
+    if (!keys.children.length) {
+      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].forEach(function (k) {
+        var b = el('button', 'pkey' + (k ? '' : ' blank'), k);
+        b.type = 'button';
+        if (!k) b.disabled = true;
+        b.addEventListener('click', function () {
+          clearTimeout(pinTimer); pinTimer = setTimeout(closeSheets, 60000);
+          if (k === '⌫') { pinTyped = pinTyped.slice(0, -1); drawDots(); return; }
+          if (pinTyped.length >= 4) return;
+          pinTyped += k; drawDots();
+          if (pinTyped.length === 4) setTimeout(function () {
+            if (pinTyped === String(CFG.settingsPin || '0905')) { $('psheet').hidden = true; $('ssheet').hidden = false; }
+            else { drawDots(true); setTimeout(function () { pinTyped = ''; drawDots(); }, 600); }
+          }, 150);
+        });
+        keys.appendChild(b);
+      });
+    }
+    $('psheet').hidden = false;
+    pinTimer = setTimeout(closeSheets, 60000);
+  }
+  $('sbtn').appendChild(icon('settings', 'Settings', 'sbic'));
+  $('sicon').appendChild(icon('settings', '', 'fic'));
+  $('sbtn').addEventListener('click', openPin);
+  $('psheet').addEventListener('click', function (ev) { if (ev.target === $('psheet')) closeSheets(); });
+  $('ssheet').addEventListener('click', function (ev) { if (ev.target === $('ssheet')) closeSheets(); });
+  $('sclose').addEventListener('click', closeSheets);
+  $('sprevshabbat').addEventListener('click', function () { closeSheets(); if (window.KDRest) window.KDRest.preview(false); });
+  $('sprevyt').addEventListener('click', function () { closeSheets(); if (window.KDRest) window.KDRest.preview(true); });
+
   // ---------- candle lighting & havdalah (hebcal.com) ----------
   var shabbat = load('kd.shabbat', null);
   function hhmm(iso) { var d = new Date(iso); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); }

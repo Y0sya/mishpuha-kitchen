@@ -222,30 +222,47 @@
       }).catch(function () {});
   }
 
-  // ---------- preview controls (?rest=1) ----------
+  // ---------- preview controls (?rest=1 on a computer, or Settings → Preview on the tablet) ----------
+  var playTimer = null;
   function previewBar() {
+    var old = $('rpreview'); if (old) old.parentNode.removeChild(old);
     var bar = document.createElement('div');
     bar.id = 'rpreview';
     bar.innerHTML = '<input id="rslide" type="range" min="0" max="1439" step="1">' +
-      '<span id="rslabel"></span><button type="button" id="ryt">Yom Tov</button><button type="button" id="rplay">▶ Day</button>';
+      '<span id="rslabel"></span><button type="button" id="ryt"></button><button type="button" id="rplay">▶ Day</button>' +
+      '<button type="button" id="rexit">Exit</button>';
     document.body.appendChild(bar);
-    var slide = $('rslide'), d = new Date(), timer = null;
-    previewMin = d.getHours() * 60 + d.getMinutes();
+    var slide = $('rslide'), d = new Date();
+    if (previewMin == null) previewMin = d.getHours() * 60 + d.getMinutes();
     slide.value = previewMin;
     function set(v) { previewMin = +v; slide.value = v; $('rslabel').textContent = hhmm(now()); tick(); }
+    function label() { $('ryt').textContent = previewYomTov ? 'Shabbat' : 'Yom Tov'; }
+    label();
     slide.addEventListener('input', function () { set(slide.value); });
-    $('ryt').addEventListener('click', function () { previewYomTov = !previewYomTov; this.textContent = previewYomTov ? 'Shabbat' : 'Yom Tov'; tick(); });
+    $('ryt').addEventListener('click', function () { previewYomTov = !previewYomTov; label(); tick(); });
     $('rplay').addEventListener('click', function () {   // whole day in ~24 s
-      if (timer) { clearInterval(timer); timer = null; this.textContent = '▶ Day'; return; }
+      if (playTimer) { clearInterval(playTimer); playTimer = null; this.textContent = '▶ Day'; return; }
       this.textContent = '❚❚';
-      timer = setInterval(function () { set((previewMin + 1) % 1440); }, 16);
+      playTimer = setInterval(function () { set((previewMin + 1) % 1440); }, 16);
     });
+    $('rexit').addEventListener('click', stopPreview);
     set(previewMin);
+  }
+  function startPreview(yomTov) {
+    PREVIEW = true; previewYomTov = !!yomTov; previewMin = null;
+    previewBar();
+  }
+  function stopPreview() {
+    clearInterval(playTimer); playTimer = null;
+    var bar = $('rpreview'); if (bar) bar.parentNode.removeChild(bar);
+    PREVIEW = false; previewMin = null; previewYomTov = false;
+    tick();
   }
 
   window.KDRest = {
     setItems: function (list) { items = list || []; tick(); },
     period: function (d) { return period(d); },   // for checking the switch times
+    preview: startPreview,                         // Settings → Preview Shabbat / Yom Tov
   };
   items = (load('kd.shabbat', []) || []);
   fetchSun();

@@ -17,8 +17,8 @@ your initial is just added to that row. Tap a row once it's bought; hold it to r
 becomes a sky that follows the real sunrise/sunset, with the real stars (`web/stars.js`, ~630
 brightest) and the moon in its real place and phase for Vaughan, as if looking out a south window,
 with שבת or the Yom Tov's Hebrew name, the parasha, and the start/end times (`web/rest.js`).
-Preview it on a computer at `http://localhost:5178/?rest=1` (time slider, ▶ plays a whole day,
-Yom Tov toggle). Hebrew font: Frank Ruhl Libre (OFL), bundled in `web/fonts/`.
+Preview it on the tablet via the gear (PIN in `web/config.js`) → Preview Shabbat / Yom Tov, or
+on a computer at `http://localhost:5178/?rest=1` (time slider, ▶ plays a whole day, Yom Tov toggle, Exit). Hebrew font: Frank Ruhl Libre (OFL), bundled in `web/fonts/`.
 
 **Feedback:** the round button bottom-right. Saved to the Supabase `feedback` table (once set
 up) and to a file on the tablet: `adb shell cat /sdcard/Android/data/com.mishpuha.kitchen/files/feedback.jsonl`.
