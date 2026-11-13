@@ -14,7 +14,8 @@ your initial is just added to that row. Tap a row once it's bought; hold it to r
 **Top right:** this week's candle lighting and havdalah (hebcal.com, Vaughan).
 
 **Shabbat & Yom Tov:** from candle lighting until havdalah the tiles fade out and the screen
-becomes a sky that follows the real sunrise/sunset (stars and moon at night, sun arc by day),
+becomes a sky that follows the real sunrise/sunset, with the real stars (`web/stars.js`, ~630
+brightest) and the moon in its real place and phase for Vaughan, as if looking out a south window,
 with שבת or the Yom Tov's Hebrew name, the parasha, and the start/end times (`web/rest.js`).
 Preview it on a computer at `http://localhost:5178/?rest=1` (time slider, ▶ plays a whole day,
 Yom Tov toggle). Hebrew font: Frank Ruhl Libre (OFL), bundled in `web/fonts/`.

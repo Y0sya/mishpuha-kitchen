@@ -317,18 +317,12 @@ header, #board, #fbtn { transition: opacity 3s ease, filter 3s ease; }
 body.resting header, body.resting #board, body.resting #fbtn { opacity: 0; filter: blur(6px); pointer-events: none; }
 
 #stars { position: absolute; inset: 0; transition: opacity 2s linear; }
-#stars i { position: absolute; border-radius: 50%; background: #fff; animation: twinkle 6s ease-in-out infinite; }
-@keyframes twinkle { 0%, 100% { transform: scale(1); } 50% { transform: scale(.55); } }
+#stars i { position: absolute; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); animation: twinkle 6s ease-in-out infinite; }
+@keyframes twinkle { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(.6); } }
 
-#sun {
-  position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
-  background: radial-gradient(circle, var(--sun, #fff4d6) 0 28%, rgba(255,236,190,.55) 34%, rgba(255,220,160,0) 70%);
-  transition: opacity 2s linear;
-}
 #moon {
-  position: absolute; right: 13%; top: 14%; width: 64px; height: 64px; border-radius: 50%;
-  box-shadow: -14px 10px 0 0 #f6efd8; transform: rotate(-20deg); filter: drop-shadow(0 0 12px rgba(246,239,216,.35));
-  transition: opacity 2s linear;
+  position: absolute; width: 58px; height: 58px; margin: -29px 0 0 -29px;
+  filter: drop-shadow(0 0 14px rgba(246,239,216,.35)); transition: opacity 2s linear;
 }
 
 .rcenter {
@@ -354,3 +348,6 @@ body.resting header, body.resting #board, body.resting #fbtn { opacity: 0; filte
 #rpreview input { width: 380px; }
 #rpreview button { font: inherit; color: #fff; background: rgba(255,255,255,.15); border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
 #rslabel { width: 46px; font-variant-numeric: tabular-nums; }
+
+/* Hebrew date next to the civil date */
+#hdate { font-family: 'Frank Ruhl Libre', 'Noto Serif Hebrew', serif; font-size: 22px; color: var(--muted); }

@@ -106,30 +106,83 @@
     rest.style.setProperty('--ink', mix('#16213d', '#f7f1e3', light));
     rest.style.setProperty('--glow', light > 0.5 ? 'rgba(0,0,0,.45)' : 'rgba(255,255,255,.45)');
     $('stars').style.opacity = String(Math.max(0, (dark - 0.45) / 0.55));
-    $('moon').style.opacity = String(Math.max(0, (dark - 0.6) / 0.4));
-    // The sun rides an arc from sunrise (left) to sunset (right).
-    var p = (m - s.sr) / (s.ss - s.sr), sunEl = $('sun');
-    if (p > -0.04 && p < 1.04) {
-      sunEl.style.opacity = String(Math.min(1, Math.min(p + 0.04, 1.04 - p) * 8));
-      sunEl.style.left = (8 + p * 84) + '%';
-      sunEl.style.top = (82 - Math.sin(Math.PI * Math.min(1, Math.max(0, p))) * 62) + '%';
-      var low = 1 - Math.sin(Math.PI * Math.min(1, Math.max(0, p)));   // redder near the horizon
-      sunEl.style.setProperty('--sun', mix('#fff4d6', '#ff9a52', Math.min(1, low * 1.3)));
-    } else sunEl.style.opacity = '0';
+    placeSky(at, dark);
   }
 
-  function makeStars() {
-    var box = $('stars');
-    if (box.children.length) return;
-    var seed = 7;
-    function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }   // same sky every time
-    for (var i = 0; i < 90; i++) {
-      var s = document.createElement('i');
-      var size = rnd() < 0.15 ? 3 : rnd() < 0.5 ? 2 : 1.4;
-      s.style.cssText = 'left:' + (rnd() * 100) + '%;top:' + (rnd() * 70) + '%;width:' + size + 'px;height:' + size +
-        'px;animation-delay:' + (rnd() * 6).toFixed(1) + 's;opacity:' + (0.4 + rnd() * 0.6).toFixed(2);
-      box.appendChild(s);
+  // ---------- the real sky: stars and moon where they actually are ----------
+  // The screen is a window facing south: azimuth 60° (ENE) at the left edge, 300° (WNW) at the
+  // right, the horizon near the bottom, ~80° up at the top. Stars are the real bright stars
+  // (stars.js) for this place and minute; the moon has its real position and phase.
+  var LAT = (CFG.place || {}).lat || 43.84, LON = (CFG.place || {}).lon || -79.50;
+  var R = Math.PI / 180;
+  function jd(d) { return d.getTime() / 864e5 + 2440587.5; }
+  function altAz(raDeg, decDeg, lstDeg) {
+    var H = (lstDeg - raDeg) * R, d = decDeg * R, p = LAT * R;
+    var alt = Math.asin(Math.sin(p) * Math.sin(d) + Math.cos(p) * Math.cos(d) * Math.cos(H));
+    var az = Math.atan2(-Math.cos(d) * Math.sin(H), Math.sin(d) * Math.cos(p) - Math.cos(d) * Math.cos(H) * Math.sin(p));
+    return { alt: alt / R, az: ((az / R) + 360) % 360 };
+  }
+  function lst(at) { var n = jd(at) - 2451545.0; return ((280.46061837 + 360.98564736629 * n + LON) % 360 + 360) % 360; }
+  function toScreen(h) {   // percentages within #rest
+    return { x: (h.az - 60) / 240 * 100, y: 90 - Math.min(h.alt, 82) / 82 * 86 };
+  }
+
+  var starEls = null;
+  function buildStars() {
+    var box = $('stars'), list = window.KD_STARS || [];
+    box.innerHTML = '';
+    starEls = list.map(function (s, i) {
+      var e = document.createElement('i');
+      var size = Math.max(1.2, 4.2 - s[2] * 0.75);                       // brighter = bigger
+      var bv = s[3], tint = bv < 0 ? '#cfe0ff' : bv < 0.6 ? '#ffffff' : bv < 1.2 ? '#fff1d6' : '#ffd6b0';
+      e.style.cssText = 'width:' + size.toFixed(1) + 'px;height:' + size.toFixed(1) + 'px;background:' + tint +
+        ';opacity:' + Math.min(1, 1.15 - s[2] * 0.17).toFixed(2) + ';animation-delay:' + ((i * 0.37) % 6).toFixed(1) + 's';
+      box.appendChild(e);
+      return e;
+    });
+  }
+
+  // Moon: low-precision (≈1°) position and phase from its mean orbit.
+  function moonNow(at) {
+    var n = jd(at) - 2451545.0;
+    var L = 218.316 + 13.176396 * n, M = 134.963 + 13.064993 * n, F = 93.272 + 13.229350 * n;
+    var lon = (L + 6.289 * Math.sin(M * R)) % 360, lat = 5.128 * Math.sin(F * R);
+    var g = 357.528 + 0.9856003 * n, sunLon = (280.46 + 0.9856474 * n + 1.915 * Math.sin(g * R) + 0.02 * Math.sin(2 * g * R)) % 360;
+    var e = 23.439 * R, l = lon * R, b = lat * R;
+    var ra = Math.atan2(Math.sin(l) * Math.cos(e) - Math.tan(b) * Math.sin(e), Math.cos(l)) / R;
+    var dec = Math.asin(Math.sin(b) * Math.cos(e) + Math.cos(b) * Math.sin(e) * Math.sin(l)) / R;
+    var elong = ((lon - sunLon) % 360 + 360) % 360;                       // 0 new · 90 first quarter · 180 full
+    return { ra: (ra + 360) % 360, dec: dec, elong: elong };
+  }
+  // SVG of the lit part: right side lit while waxing (as seen from the northern hemisphere).
+  function moonSvg(elong) {
+    var k = (1 - Math.cos(elong * R)) / 2;                                 // fraction lit
+    var waxing = elong < 180, r = 30, tx = r * Math.abs(1 - 2 * k);       // terminator ellipse half-width
+    var outer = waxing ? 1 : 0, inner = (k > 0.5) === waxing ? 1 : 0;
+    var lit = 'M30 0 A30 30 0 0 ' + outer + ' 30 60 A' + tx.toFixed(2) + ' 30 0 0 ' + inner + ' 30 0 Z';
+    return '<svg viewBox="0 0 60 60" width="100%" height="100%">' +
+      '<circle cx="30" cy="30" r="30" fill="rgba(200,205,220,0.10)"/>' +
+      (k > 0.01 ? '<path d="' + lit + '" fill="#f6efd8"/>' : '') + '</svg>';
+  }
+
+  function placeSky(at, dark) {
+    if (!starEls) buildStars();
+    var L0 = lst(at), list = window.KD_STARS || [];
+    for (var i = 0; i < list.length; i++) {
+      var h = altAz(list[i][0], list[i][1], L0), e = starEls[i];
+      if (h.alt < 1 || h.az < 55 || h.az > 305) { e.style.display = 'none'; continue; }
+      var p = toScreen(h);
+      e.style.display = '';
+      e.style.left = p.x.toFixed(2) + '%';
+      e.style.top = p.y.toFixed(2) + '%';
     }
+    var m = moonNow(at), mh = altAz(m.ra, m.dec, L0), moon = $('moon');
+    if (mh.alt < -2 || mh.az < 50 || mh.az > 310) { moon.style.opacity = '0'; return; }
+    var mp = toScreen(mh), key = Math.round(m.elong);
+    if (moon.getAttribute('data-e') !== String(key)) { moon.innerHTML = moonSvg(m.elong); moon.setAttribute('data-e', key); }
+    moon.style.left = mp.x.toFixed(2) + '%';
+    moon.style.top = mp.y.toFixed(2) + '%';
+    moon.style.opacity = String(0.35 + 0.65 * Math.min(1, dark * 1.3));    // the day moon is pale, as in life
   }
 
   // ---------- show / hide ----------
@@ -138,8 +191,7 @@
     s.className = 'rt';
     s.setAttribute('aria-label', label);
     s.innerHTML = ICONS[key] || '';
-    var same = ymd(d) === ymd(at);
-    s.appendChild(document.createTextNode((same ? '' : DAYS[d.getDay()] + ' ') + hhmm(d)));
+    s.appendChild(document.createTextNode(hhmm(d)));
     return s;
   }
 
@@ -147,7 +199,6 @@
     var at = now(), p = period(at), body = document.body;
     if (!p) { body.classList.remove('resting'); return; }
     body.classList.add('resting');
-    makeStars();
     var n = names(at);
     $('rtitle').textContent = n.title;
     $('rsub').textContent = n.sub;

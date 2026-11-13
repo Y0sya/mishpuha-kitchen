@@ -189,11 +189,32 @@
     return MONTHS[t.getMonth()].slice(0, 3) + ' ' + t.getDate();
   }
 
+  // ---------- Hebrew date ----------
+  // Day in Hebrew letters + month, e.g. "ג׳ כסלו". The Jewish day starts at sunset, so after
+  // today's sunset (from hebcal zmanim, saved by rest.js) it shows tomorrow's date.
+  function gematria(n) {
+    var ones = ['', 'א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ז', 'ח', 'ט'], tens = ['', 'י', 'כ', 'ל'];
+    var s = n === 15 ? 'טו' : n === 16 ? 'טז' : tens[Math.floor(n / 10)] + ones[n % 10];
+    return s.length === 1 ? s + '׳' : s.slice(0, -1) + '״' + s.slice(-1);
+  }
+  function hebrewDate(d) {
+    try {
+      var sun = load('kd.sun', null), day = new Date(d);
+      if (sun && sun.sunset && sun.date === ymdLocal(d) && d >= new Date(sun.sunset)) day = new Date(d.getTime() + 864e5);
+      var parts = new Intl.DateTimeFormat('he-u-ca-hebrew', { day: 'numeric', month: 'long' }).formatToParts(day);
+      var num = 0, month = '';
+      parts.forEach(function (p) { if (p.type === 'day') num = parseInt(p.value, 10); if (p.type === 'month') month = p.value; });
+      return num && month ? gematria(num) + ' ' + month : '';
+    } catch (e) { return ''; }
+  }
+  function ymdLocal(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
   // ---------- render ----------
   function renderClock() {
     var d = new Date();
     $('clock').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
     $('date').textContent = DAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
+    $('hdate').textContent = hebrewDate(d);
   }
 
   // Latest entry among these chores: who, what, when. Entries up to `windowMs` before it count
