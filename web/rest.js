@@ -245,6 +245,7 @@
 
   window.KDRest = {
     setItems: function (list) { items = list || []; tick(); },
+    period: function (d) { return period(d); },   // for checking the switch times
   };
   items = (load('kd.shabbat', []) || []);
   fetchSun();
