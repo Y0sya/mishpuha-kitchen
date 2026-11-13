@@ -144,13 +144,13 @@
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function startOfDay(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
-  function ago(iso) {   // short: now, 5m, 3h, 2d
-    var t = new Date(iso), now = new Date(), min = Math.round((now - t) / 6e4);
-    if (min < 1) return 'now';
-    if (min < 60) return min + 'm';
-    var days = Math.round((startOfDay(now) - startOfDay(t)) / 864e5);
-    if (days === 0) return Math.floor(min / 60) + 'h';
-    return days + 'd';
+  // When it was done, as short as possible: "14:17" today, "Thu" this week, "Nov 3" before.
+  function stamp(iso) {
+    var t = new Date(iso);
+    var days = Math.round((startOfDay(new Date()) - startOfDay(t)) / 864e5);
+    if (days === 0) return t.getHours() + ':' + String(t.getMinutes()).padStart(2, '0');
+    if (days < 7) return DAYS[t.getDay()].slice(0, 3);
+    return MONTHS[t.getMonth()].slice(0, 3) + ' ' + t.getDate();
   }
   function weekStart() { var d = startOfDay(new Date()); d.setDate(d.getDate() - d.getDay()); return d; } // Sunday
 
@@ -197,7 +197,7 @@
       var c = chores[id]; if (!c) return;
       var i = icon(c.icon, c.name, 'mini'); i.style.color = c.color; wrap.appendChild(i);
     });
-    wrap.appendChild(el('span', 'when', ago(info.at)));
+    wrap.appendChild(el('span', 'when', stamp(info.at)));
     if (new Date(info.at) >= startOfDay(new Date())) {
       box.classList.add('today');
       box.style.setProperty('--tc', info.people[0] ? info.people[0].color : 'var(--ok)');
