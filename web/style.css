@@ -250,3 +250,17 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 .badge.two { font-size: 9px; letter-spacing: -0.3px; }
 .hrow .badge.two, .hsum .badge.two { font-size: 11px; }
 .option .avatar.two { font-size: 28px; letter-spacing: -0.5px; }
+
+/* Person circle + what they did, in a small white circle overlapping its corner */
+.pb { position: relative; display: inline-flex; }
+.pb.has-sub { margin-right: 11px; }
+.subs { position: absolute; left: 14px; bottom: -6px; display: flex; }
+.sub {
+  width: 14px; height: 14px; border-radius: 50%; background: #fff; margin-left: -4px;
+  box-shadow: 0 0 0 1px rgba(11,11,11,0.12); display: inline-flex; align-items: center; justify-content: center;
+}
+.sub:first-child { margin-left: 0; }
+.ic.subic { width: 10px; height: 10px; color: var(--ink2); }
+.last .when { margin-left: 4px; }
+
+#toast .gone { text-decoration: line-through; opacity: .8; }

@@ -8,7 +8,8 @@ who did it last (coloured initial) and when. **Hold** a tile to see its last 10 
 
 **Groceries** (right): one running list. Tap the empty jar ("we finished it") or the cart+
 ("please buy"), type or pick from suggestions, tap your name. If it's already on the list,
-your initial is just added to that row. Tap a row once it's bought (Undo for 6 s).
+your initial is just added to that row. Tap a row once it's bought; hold it to remove it
+(Undo for 6 s either way).
 
 **Top right:** this week's candle lighting and havdalah (hebcal.com, Vaughan).
 

@@ -202,18 +202,23 @@
     var top = null, win = windowMs || 1000;
     state.log.forEach(function (r) { if (ids[r.chore_id] && (!top || r.done_at > top.done_at)) top = r; });
     if (!top) return null;
-    var t = new Date(top.done_at).getTime(), people = [], what = [], acts = [];
+    var t = new Date(top.done_at).getTime(), people = [], what = [], acts = [], mine = {};
     state.log.forEach(function (r) {
       var rt = new Date(r.done_at).getTime();
       if (!ids[r.chore_id] || rt > t + 1000 || rt < t - win) return;
       if (people.indexOf(r.person_id) < 0) people.push(r.person_id);
       if (what.indexOf(r.chore_id) < 0) what.push(r.chore_id);
       if (r.action && acts.indexOf(r.action) < 0) acts.push(r.action);
+      // what each person did, for the little icon on their circle
+      var m = mine[r.person_id] || (mine[r.person_id] = { chores: [], actions: [] });
+      if (m.chores.indexOf(r.chore_id) < 0) m.chores.push(r.chore_id);
+      if (r.action && m.actions.indexOf(r.action) < 0) m.actions.push(r.action);
     });
     var fam = state.family.map(function (p) { return p.id; });
     people.sort(function (a, b) { return fam.indexOf(a) - fam.indexOf(b); });
     what.sort(function (a, b) { return choreIds.indexOf(a) - choreIds.indexOf(b); });
-    return { at: top.done_at, people: people.map(person).filter(Boolean), what: what, actions: acts };
+    Object.keys(mine).forEach(function (k) { mine[k].chores.sort(function (a, b) { return choreIds.indexOf(a) - choreIds.indexOf(b); }); });
+    return { at: top.done_at, people: people.map(person).filter(Boolean), what: what, actions: acts, mine: mine };
   }
 
   // A person's coloured initial.
@@ -231,13 +236,22 @@
   function lastBlock(box, choreIds, chores, windowMs) {
     var info = latest(choreIds, windowMs), wrap = el('span', 'last');
     if (!info) return wrap;
-    info.people.forEach(function (p) { wrap.appendChild(badge(p)); });
-    if (chores) info.what.forEach(function (id) {
-      var c = chores[id]; if (!c) return;
-      var i = icon(c.icon, c.name, 'mini'); i.style.color = c.color; wrap.appendChild(i);
+    // Each person's circle, with what they did in a small white circle on its corner
+    // (which bin for Trash, Unload/Reload for the dishwasher).
+    info.people.forEach(function (p) {
+      var pb = el('span', 'pb');
+      pb.appendChild(badge(p));
+      var m = info.mine[p.id] || { chores: [], actions: [] }, subs = el('span', 'subs');
+      if (chores) m.chores.forEach(function (id) {
+        var c = chores[id]; if (!c) return;
+        var sub = el('span', 'sub'), i = icon(c.icon, c.name, 'subic'); i.style.color = c.color;
+        sub.appendChild(i); subs.appendChild(sub);
+      });
+      var ak = actionIcon(m.actions);
+      if (ak) { var sub = el('span', 'sub'); sub.appendChild(icon(ak, m.actions.join(' & '), 'subic')); subs.appendChild(sub); }
+      if (subs.children.length) { pb.classList.add('has-sub'); pb.appendChild(subs); }
+      wrap.appendChild(pb);
     });
-    var ak = actionIcon(info.actions);
-    if (ak) wrap.appendChild(icon(ak, info.actions.join(' & '), 'mini act'));
     wrap.appendChild(el('span', 'when', stamp(info.at)));
     if (new Date(info.at) >= startOfDay(new Date())) {
       box.classList.add('today');
@@ -590,6 +604,17 @@
     showToast(function () { row.bought_at = null; putShop(row); state.shop.push(row); shopChanged(); });
   }
 
+  function removeGrocery(row) {
+    state.shop = state.shop.filter(function (r) { return r.id !== row.id; });
+    state.outbox.push({ table: 'shopping', op: 'drop', row: { id: row.id } });
+    shopChanged();
+    var t = $('toast-text');
+    t.innerHTML = '';
+    t.appendChild(el('span', 'tname', 'Removed'));
+    t.appendChild(el('span', 'tname gone', row.item));
+    showToast(function () { state.shop.push(row); putShop(row); shopChanged(row.id); });
+  }
+
   function renderGrocery(flashId) {
     var list = $('glist');
     list.innerHTML = '';
@@ -604,6 +629,7 @@
       (r.people || []).forEach(function (id) { var p = person(id); if (p) who.appendChild(badge(p)); });
       if (r.source === 'telegram' && !(r.people || []).length) who.appendChild(el('span', 'badge tg', 'T'));
       li.appendChild(who);
+      holdable(li, function () { removeGrocery(r); });   // hold = take it off the list
       li.addEventListener('click', function () { bought(r); });
       list.appendChild(li);
     });

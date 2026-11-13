@@ -76,7 +76,7 @@ create policy "tablet removes chores"  on chore_log for delete to anon using (do
 create policy "tablet reads shopping"  on shopping  for select to anon using (true);
 create policy "tablet adds shopping"   on shopping  for insert to anon with check (true);
 create policy "tablet ticks shopping"  on shopping  for update to anon using (true) with check (true);
-create policy "tablet undoes shopping" on shopping  for delete to anon using (added_at > now() - interval '1 day');
+create policy "tablet removes shopping" on shopping for delete to anon using (true);   -- hold an item to remove it
 
 -- Starting family and tiles (edit in the table editor afterwards).
 insert into family (name, color, initials, sort)
