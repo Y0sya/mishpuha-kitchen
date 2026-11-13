@@ -329,10 +329,19 @@
     if (!acts || !acts.length) return null;
     return acts.length > 1 ? 'both' : ACTION_ICON[String(acts[0]).toLowerCase()] || null;
   }
-  function chooseAction(tile, chore, done) {
+  // Sheet title: the tile's icon(s), then the chore in plain words.
+  function titleWith(tile, chores, text) {
     var t = $('picker-title');
     t.innerHTML = '';
-    t.appendChild(el('span', 'ptitle', tile.name + ' · ' + chore.name));
+    t.appendChild(icon(tile.icon, tile.name, 'tin'));
+    if (tile.mode === 'split') (chores || []).forEach(function (c) {
+      var i = icon(c.icon, c.name, 'tin'); i.style.color = c.color; t.appendChild(i);
+    });
+    t.appendChild(el('span', 'ptitle', text));
+  }
+
+  function chooseAction(tile, chore, done) {
+    titleWith(tile, [chore], tile.name + ' · ' + chore.name);
     $('entry').hidden = true;
     $('confirm').hidden = true;
     $('picker').classList.remove('top');
@@ -357,11 +366,10 @@
   function chooseWho(tile, chores, onPick, actions) {
     if (!onPick) {
       // Spell the chore out here, in case an icon on the tile isn't obvious.
-      var t = $('picker-title'), parts = [tile.name];
+      var parts = [tile.name];
       if (tile.mode !== 'single') parts.push(chores.map(function (c) { return c.name; }).join(', '));
       if (actions && actions.length) parts.push(actions.join(' & '));
-      t.innerHTML = '';
-      t.appendChild(el('span', 'ptitle', parts.join(' · ')));
+      titleWith(tile, chores, parts.join(' · '));
     }
     $('entry').hidden = true;
     $('picker').classList.remove('top');
@@ -456,9 +464,7 @@
     var rows = state.log.filter(function (r) { return ids[r.chore_id]; })
       .sort(function (a, b) { return a.done_at < b.done_at ? 1 : -1; }).slice(0, 10);
 
-    var t = $('picker-title');
-    t.innerHTML = '';
-    t.appendChild(el('span', 'ptitle', title));
+    titleWith(tile, chores, title);
     $('entry').hidden = true;
     $('confirm').hidden = true;
     $('picker').classList.remove('top');

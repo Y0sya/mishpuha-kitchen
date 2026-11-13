@@ -215,7 +215,8 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 .gpicked { font-size: 26px; font-weight: 600; }
 #picker-title { gap: 12px; }
 
-.ptitle { font-size: 30px; font-weight: 600; letter-spacing: -0.3px; text-align: center; }
+.ptitle { font-size: 22px; font-weight: 400; color: var(--ink2); }
+.ic.tin { width: 34px; height: 34px; }
 
 /* ---------- Hold a tile: recent entries ---------- */
 #options.history { flex-direction: column; flex-wrap: nowrap; gap: 0; width: 560px; max-width: 86vw; }
