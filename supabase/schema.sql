@@ -5,6 +5,7 @@ create table if not exists family (
   id    uuid primary key default gen_random_uuid(),
   name  text not null,
   color text not null default '#2a78d6',   -- tile/avatar colour
+  initials text,                           -- shown in the circle; default first letter
   sort  int  not null default 0
 );
 
@@ -78,10 +79,10 @@ create policy "tablet ticks shopping"  on shopping  for update to anon using (tr
 create policy "tablet undoes shopping" on shopping  for delete to anon using (added_at > now() - interval '1 day');
 
 -- Starting family and tiles (edit in the table editor afterwards).
-insert into family (name, color, sort)
+insert into family (name, color, initials, sort)
 select * from (values
-  ('Mama', '#2a78d6', 1), ('Papa', '#eb6834', 2), ('Yosya', '#1baf7a', 3), ('David', '#6250d6', 4),
-  ('Shmulik', '#c98500', 5), ('Yoni', '#0f9fb5', 6), ('Sara Bella', '#d6409f', 7)
+  ('Mama', '#2a78d6', null, 1), ('Papa', '#eb6834', null, 2), ('Yosya', '#1baf7a', 'Y', 3), ('David', '#6250d6', 'DY', 4),
+  ('Shmulik', '#c98500', null, 5), ('Yoni', '#0f9fb5', 'YS', 6), ('Sara Bella', '#d6409f', 'SB', 7)
 ) v where not exists (select 1 from family);
 
 do $$

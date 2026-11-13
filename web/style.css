@@ -245,3 +245,8 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 .hdel { width: auto; height: 40px; padding: 0 16px; margin-left: 8px; border: 1px solid rgba(201,55,47,0.45); border-radius: 12px;
         background: transparent; color: #c9372f; font-size: 16px; font-weight: 500; }
 .hdel:active { background: rgba(201,55,47,0.10); }
+
+/* Two-letter initials (YS, DY, SB) */
+.badge.two { font-size: 9px; letter-spacing: -0.3px; }
+.hrow .badge.two, .hsum .badge.two { font-size: 11px; }
+.option .avatar.two { font-size: 28px; letter-spacing: -0.5px; }

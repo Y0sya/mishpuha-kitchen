@@ -55,7 +55,7 @@
     return s;
   }
   function localFamily() {
-    return (CFG.family || []).map(function (p) { return { id: p.name, name: p.name, color: p.color }; });
+    return (CFG.family || []).map(function (p) { return { id: p.name, name: p.name, color: p.color, initials: p.initials }; });
   }
   var state = {
     family: REMOTE ? load('kd.family', []) : localFamily(),
@@ -106,7 +106,7 @@
     if (!REMOTE) return Promise.resolve();
     var since = new Date(Date.now() - LOG_DAYS * 864e5).toISOString();
     return Promise.all([
-      api('GET', 'family?select=id,name,color&order=sort'),
+      api('GET', 'family?select=id,name,color,initials&order=sort'),
       api('GET', 'tiles?select=id,name,icon,mode&active=is.true&order=sort'),
       api('GET', 'chores?select=id,tile_id,name,icon,color,actions&active=is.true&order=sort'),
       api('GET', 'chore_log?select=id,chore_id,person_id,action,done_at&done_at=gte.' + since + '&order=done_at.desc&limit=3000'),
@@ -218,7 +218,8 @@
 
   // A person's coloured initial.
   function badge(p, cls) {
-    var b = el('span', cls || 'badge', p.name.charAt(0).toUpperCase());
+    var ini = (p.initials || p.name.charAt(0)).toUpperCase();
+    var b = el('span', (cls || 'badge') + (ini.length > 1 ? ' two' : ''), ini);
     b.style.background = p.color;
     b.title = p.name;
     return b;

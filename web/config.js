@@ -1,14 +1,15 @@
 // Fallback data for a browser with no Supabase (dev). On the tablet, people and tiles
 // come from the Supabase tables `family`, `tiles` and `chores`.
 window.KD_CONFIG = {
+  // initials: what shows in the coloured circle (default: first letter of the name).
   family: [
     { name: 'Mama',       color: '#2a78d6' },
     { name: 'Papa',       color: '#eb6834' },
-    { name: 'Yosya',      color: '#1baf7a' },
-    { name: 'David',      color: '#6250d6' },
+    { name: 'Yosya',      color: '#1baf7a', initials: 'Y' },
+    { name: 'David',      color: '#6250d6', initials: 'DY' },
     { name: 'Shmulik',    color: '#c98500' },
-    { name: 'Yoni',       color: '#0f9fb5' },
-    { name: 'Sara Bella', color: '#d6409f' },
+    { name: 'Yoni',       color: '#0f9fb5', initials: 'YS' },
+    { name: 'Sara Bella', color: '#d6409f', initials: 'SB' },
   ],
   // A tile is one chore, or a group:
   //   mode 'split'  → the tile is cut into halves, each its own button (dishwasher: meat | dairy)
