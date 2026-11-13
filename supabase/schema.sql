@@ -8,11 +8,26 @@ create table if not exists family (
   sort  int  not null default 0
 );
 
-create table if not exists chores (
+-- A tile on the screen. mode:
+--   single → one chore, tap → who did it?
+--   split  → the tile is cut into halves, one per chore (Dishwasher: Meat | Dairy)
+--   choose → tap → which ones? → who? (Trash: Recycling, Garbage, Compost)
+create table if not exists tiles (
   id     uuid primary key default gen_random_uuid(),
   name   text not null,
+  mode   text not null default 'single' check (mode in ('single', 'split', 'choose')),
   sort   int  not null default 0,
   active boolean not null default true      -- untick to hide a tile without losing its history
+);
+
+-- What actually gets logged. A single tile has one chore (usually named like the tile).
+create table if not exists chores (
+  id      uuid primary key default gen_random_uuid(),
+  tile_id uuid not null references tiles(id) on delete cascade,
+  name    text not null,
+  color   text,                              -- half/option colour, e.g. meat red, dairy blue
+  sort    int  not null default 0,
+  active  boolean not null default true
 );
 
 create table if not exists chore_log (
@@ -38,11 +53,13 @@ create table if not exists shopping (
 -- add and undo chore entries, and add/tick shopping items. Nobody can edit people or
 -- chores without the dashboard.
 alter table family    enable row level security;
+alter table tiles     enable row level security;
 alter table chores    enable row level security;
 alter table chore_log enable row level security;
 alter table shopping  enable row level security;
 
 create policy "tablet reads family"    on family    for select to anon using (true);
+create policy "tablet reads tiles"     on tiles     for select to anon using (true);
 create policy "tablet reads chores"    on chores    for select to anon using (true);
 create policy "tablet reads log"       on chore_log for select to anon using (true);
 create policy "tablet logs chores"     on chore_log for insert to anon with check (true);
@@ -50,6 +67,22 @@ create policy "tablet undoes chores"   on chore_log for delete to anon using (do
 create policy "tablet reads shopping"  on shopping  for select to anon using (true);
 create policy "tablet adds shopping"   on shopping  for insert to anon with check (true);
 create policy "tablet ticks shopping"  on shopping  for update to anon using (true) with check (true);
+
+-- Starting tiles (edit names/colours in the table editor afterwards).
+do $$
+declare dw uuid; tr uuid; ct uuid; sw uuid;
+begin
+  if not exists (select 1 from tiles) then
+    insert into tiles (name, mode, sort) values ('Dishwasher', 'split', 1) returning id into dw;
+    insert into tiles (name, mode, sort) values ('Countertops', 'single', 2) returning id into ct;
+    insert into tiles (name, mode, sort) values ('Sweep', 'single', 3) returning id into sw;
+    insert into tiles (name, mode, sort) values ('Trash', 'choose', 4) returning id into tr;
+    insert into chores (tile_id, name, color, sort) values
+      (dw, 'Meat', '#c9372f', 1), (dw, 'Dairy', '#2a78d6', 2),
+      (ct, 'Countertops', null, 1), (sw, 'Sweep', null, 1),
+      (tr, 'Recycling', '#2a78d6', 1), (tr, 'Garbage', '#52514e', 2), (tr, 'Compost', '#2e9e5b', 3);
+  end if;
+end $$;
 
 -- App updates: CI uploads kitchen.apk + version.json here; the tablet checks every 30 min.
 insert into storage.buckets (id, name, public) values ('app', 'app', true) on conflict (id) do nothing;

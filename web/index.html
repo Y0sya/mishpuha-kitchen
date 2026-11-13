@@ -19,8 +19,11 @@
   <div id="picker" hidden>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="picker-title">
       <h2 id="picker-title"></h2>
-      <p class="hint">Who did it?</p>
-      <div id="people"></div>
+      <p class="hint" id="picker-hint"></p>
+      <div id="options"></div>
+      <button id="confirm" type="button" aria-label="Done" disabled>
+        <svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
     </div>
   </div>
 

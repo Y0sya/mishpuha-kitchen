@@ -1,6 +1,8 @@
 # Mishpuha kitchen dashboard
 
-A wall tablet in the kitchen (Galaxy Tab S3). Tap a chore, tap your name, done.
+A wall tablet in the kitchen (Galaxy Tab S3). Tap a chore, tap who did it (one or more
+people), tap ✓. The dishwasher tile is split into Meat | Dairy; the trash tile first asks
+which bins (Recycling, Garbage, Compost).
 Coming next: shopping list ("we ran out of peanut butter", by voice or typing, plus items
 the family Telegram bot spots in the group chat), calendar, candle-lighting times.
 
@@ -13,9 +15,10 @@ supabase/schema.sql the database: family, chores, chore_log, shopping
 .github/workflows/  every push to main builds the app; the tablet installs it within 30 min
 ```
 
-- **Data lives in Supabase** (free tier). To change who's in the family or which chores
-  have tiles, edit the `family` and `chores` tables in the Supabase table editor; no code
-  change needed. The tablet picks it up within 30 seconds.
+- **Data lives in Supabase** (free tier). To change who's in the family or the chores,
+  edit the `family`, `tiles` and `chores` tables in the Supabase table editor; no code
+  change needed. The tablet picks it up within 30 seconds. A tile's `mode` is `single`,
+  `split` (halves, one per chore) or `choose` (asks which chores first).
 - **The app is offline-proof**: taps are saved on the tablet first and sent when Wi-Fi is back.
 - **Undo**: after a tap, an Undo button shows for 6 seconds.
 
