@@ -15,6 +15,10 @@ window.KD_CONFIG = {
       { name: 'Meat',  color: '#c9372f' },
       { name: 'Dairy', color: '#2a78d6' },
     ] },
+    { name: 'Table', mode: 'split', chores: [
+      { name: 'Set up', color: '#1baf7a' },
+      { name: 'Clean',  color: '#c98500' },
+    ] },
     { name: 'Countertops' },
     { name: 'Sweep' },
     { name: 'Trash', mode: 'choose', chores: [

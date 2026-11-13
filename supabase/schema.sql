@@ -70,15 +70,17 @@ create policy "tablet ticks shopping"  on shopping  for update to anon using (tr
 
 -- Starting tiles (edit names/colours in the table editor afterwards).
 do $$
-declare dw uuid; tr uuid; ct uuid; sw uuid;
+declare dw uuid; tb uuid; tr uuid; ct uuid; sw uuid;
 begin
   if not exists (select 1 from tiles) then
     insert into tiles (name, mode, sort) values ('Dishwasher', 'split', 1) returning id into dw;
-    insert into tiles (name, mode, sort) values ('Countertops', 'single', 2) returning id into ct;
-    insert into tiles (name, mode, sort) values ('Sweep', 'single', 3) returning id into sw;
-    insert into tiles (name, mode, sort) values ('Trash', 'choose', 4) returning id into tr;
+    insert into tiles (name, mode, sort) values ('Table', 'split', 2) returning id into tb;
+    insert into tiles (name, mode, sort) values ('Countertops', 'single', 3) returning id into ct;
+    insert into tiles (name, mode, sort) values ('Sweep', 'single', 4) returning id into sw;
+    insert into tiles (name, mode, sort) values ('Trash', 'choose', 5) returning id into tr;
     insert into chores (tile_id, name, color, sort) values
       (dw, 'Meat', '#c9372f', 1), (dw, 'Dairy', '#2a78d6', 2),
+      (tb, 'Set up', '#1baf7a', 1), (tb, 'Clean', '#c98500', 2),
       (ct, 'Countertops', null, 1), (sw, 'Sweep', null, 1),
       (tr, 'Recycling', '#2a78d6', 1), (tr, 'Garbage', '#52514e', 2), (tr, 'Compost', '#2e9e5b', 3);
   end if;
