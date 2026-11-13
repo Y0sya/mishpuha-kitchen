@@ -28,6 +28,7 @@ create table if not exists chores (
   name    text not null,
   icon    text,
   color   text,                              -- half/option colour, e.g. meat red, dairy blue
+  actions text[],                            -- asked before who, e.g. {Unload,Reload} (+ Both)
   sort    int  not null default 0,
   active  boolean not null default true
 );
@@ -36,6 +37,7 @@ create table if not exists chore_log (
   id        uuid primary key,                -- made on the tablet, so offline retries never double-count
   chore_id  uuid not null references chores(id) on delete cascade,
   person_id uuid not null references family(id) on delete cascade,
+  action    text,                            -- e.g. Unload / Reload (one row each for Both)
   done_at   timestamptz not null default now()
 );
 create index if not exists chore_log_done_at on chore_log (done_at desc);
@@ -94,9 +96,11 @@ begin
     insert into tiles (name, icon, mode, sort) values ('Trash', 'trash', 'choose', 6) returning id into tr;
     insert into chores (tile_id, name, icon, color, sort) values
       (dw, 'Meat', 'meat', '#c9372f', 1), (dw, 'Dairy', 'dairy', '#2a78d6', 2),
+      -- (dishwasher halves get actions below)
       (tb, 'Set up', 'setup', '#1baf7a', 1), (tb, 'Clean', 'clean', '#c98500', 2),
       (dn, 'Dinner', 'dinner', null, 1), (ct, 'Countertops', 'countertops', null, 1), (sw, 'Sweep', 'sweep', null, 1),
       (tr, 'Recycling', 'recycling', '#2a78d6', 1), (tr, 'Garbage', 'garbage', '#52514e', 2), (tr, 'Compost', 'compost', '#2e9e5b', 3);
+    update chores set actions = '{Unload,Reload}' where tile_id = dw;
   end if;
 end $$;
 

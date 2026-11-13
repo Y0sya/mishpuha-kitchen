@@ -16,8 +16,9 @@ window.KD_CONFIG = {
   // icon = a key of window.KD_ICONS (icons.js). The name is only read aloud / used as a fallback.
   tiles: [
     { name: 'Dishwasher', icon: 'dishwasher', mode: 'split', chores: [
-      { name: 'Meat',  icon: 'meat',  color: '#c9372f' },
-      { name: 'Dairy', icon: 'dairy', color: '#2a78d6' },
+      // actions: asked first (plus "Both"), one log row per action.
+      { name: 'Meat',  icon: 'meat',  color: '#c9372f', actions: ['Unload', 'Reload'] },
+      { name: 'Dairy', icon: 'dairy', color: '#2a78d6', actions: ['Unload', 'Reload'] },
     ] },
     { name: 'Table', icon: 'table', mode: 'split', chores: [
       { name: 'Set up', icon: 'setup', color: '#1baf7a' },

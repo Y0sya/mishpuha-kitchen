@@ -1,7 +1,7 @@
 # Mishpuha kitchen dashboard
 
 A wall tablet in the kitchen (Galaxy Tab S3, landscape). Small icon tiles: tap a chore, tap
-who did it. Dishwasher is split into Meat | Dairy, Table into Set up | Clean; Trash first
+who did it. Dishwasher is split into Meat | Dairy (each asks Unload / Reload / Both), Table into Set up | Clean; Trash first
 asks which bins (Recycling, Garbage, Compost; several allowed) and needs ✓. Each tile shows
 who did it last (coloured initial) and when. **Hold** a tile to see its last 10 entries and remove one
 (it asks "Are you sure?" first).

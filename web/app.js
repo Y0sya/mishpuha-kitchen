@@ -41,7 +41,7 @@
   function localTiles() {
     return (CFG.tiles || []).map(function (t) {
       var chores = t.chores && t.chores.length
-        ? t.chores.map(function (c) { return { id: t.name + '/' + c.name, name: c.name, icon: c.icon, color: c.color }; })
+        ? t.chores.map(function (c) { return { id: t.name + '/' + c.name, name: c.name, icon: c.icon, color: c.color, actions: c.actions }; })
         : [{ id: t.name, name: t.name, icon: t.icon, color: t.color }];
       return { id: t.name, name: t.name, icon: t.icon, mode: t.mode || 'single', chores: chores };
     });
@@ -108,8 +108,8 @@
     return Promise.all([
       api('GET', 'family?select=id,name,color&order=sort'),
       api('GET', 'tiles?select=id,name,icon,mode&active=is.true&order=sort'),
-      api('GET', 'chores?select=id,tile_id,name,icon,color&active=is.true&order=sort'),
-      api('GET', 'chore_log?select=id,chore_id,person_id,done_at&done_at=gte.' + since + '&order=done_at.desc&limit=3000'),
+      api('GET', 'chores?select=id,tile_id,name,icon,color,actions&active=is.true&order=sort'),
+      api('GET', 'chore_log?select=id,chore_id,person_id,action,done_at&done_at=gte.' + since + '&order=done_at.desc&limit=3000'),
       api('GET', 'shopping?select=id,item,people,kind,source,added_at,bought_at&bought_at=is.null&order=added_at'),
     ]).then(function (res) {
       var tiles = res[1].map(function (t) {
@@ -136,14 +136,18 @@
   }
 
   // ---------- actions ----------
-  function record(choreIds, personIds) {
+  // actions: e.g. ['Unload', 'Reload'] for the dishwasher (one row each); omit for most chores.
+  function record(choreIds, personIds, actions) {
     var now = new Date().toISOString(), rows = [];
     choreIds.forEach(function (c) {
       personIds.forEach(function (p) {
-        var row = { id: uuid(), chore_id: c, person_id: p, done_at: now };
-        rows.push(row);
-        state.log.unshift(row);
-        state.outbox.push({ op: 'add', row: row });
+        (actions && actions.length ? actions : [null]).forEach(function (a) {
+          var row = { id: uuid(), chore_id: c, person_id: p, done_at: now };
+          if (a) row.action = a;
+          rows.push(row);
+          state.log.unshift(row);
+          state.outbox.push({ op: 'add', row: row });
+        });
       });
     });
     persist(); render(choreIds); flush();
@@ -186,16 +190,17 @@
     var top = null;
     state.log.forEach(function (r) { if (ids[r.chore_id] && (!top || r.done_at > top.done_at)) top = r; });
     if (!top) return null;
-    var t = new Date(top.done_at).getTime(), people = [], what = [];
+    var t = new Date(top.done_at).getTime(), people = [], what = [], acts = [];
     state.log.forEach(function (r) {
       if (!ids[r.chore_id] || Math.abs(new Date(r.done_at).getTime() - t) > 1000) return;   // same tap
       if (people.indexOf(r.person_id) < 0) people.push(r.person_id);
       if (what.indexOf(r.chore_id) < 0) what.push(r.chore_id);
+      if (r.action && acts.indexOf(r.action) < 0) acts.push(r.action);
     });
     var fam = state.family.map(function (p) { return p.id; });
     people.sort(function (a, b) { return fam.indexOf(a) - fam.indexOf(b); });
     what.sort(function (a, b) { return choreIds.indexOf(a) - choreIds.indexOf(b); });
-    return { at: top.done_at, people: people.map(person).filter(Boolean), what: what };
+    return { at: top.done_at, people: people.map(person).filter(Boolean), what: what, actions: acts };
   }
 
   // A person's coloured initial.
@@ -216,6 +221,8 @@
       var c = chores[id]; if (!c) return;
       var i = icon(c.icon, c.name, 'mini'); i.style.color = c.color; wrap.appendChild(i);
     });
+    var ak = actionIcon(info.actions);
+    if (ak) wrap.appendChild(icon(ak, info.actions.join(' & '), 'mini act'));
     wrap.appendChild(el('span', 'when', stamp(info.at)));
     if (new Date(info.at) >= startOfDay(new Date())) {
       box.classList.add('today');
@@ -316,12 +323,43 @@
     showSheet();
   }
 
+  // Unload / Reload / Both (dishwasher): one tap, then on to who.
+  var ACTION_ICON = { unload: 'unload', reload: 'reload', both: 'both' };
+  function actionIcon(acts) {
+    if (!acts || !acts.length) return null;
+    return acts.length > 1 ? 'both' : ACTION_ICON[String(acts[0]).toLowerCase()] || null;
+  }
+  function chooseAction(tile, chore, done) {
+    var t = $('picker-title');
+    t.innerHTML = '';
+    t.appendChild(el('span', 'ptitle', tile.name + ' · ' + chore.name));
+    $('entry').hidden = true;
+    $('confirm').hidden = true;
+    $('picker').classList.remove('top');
+    var box = $('options');
+    box.innerHTML = '';
+    box.className = 'acts';
+    chore.actions.concat(chore.actions.length > 1 ? ['Both'] : []).forEach(function (a) {
+      var b = el('button', 'option act');
+      b.type = 'button';
+      var i = icon(ACTION_ICON[a.toLowerCase()] || 'both', a, 'opt'); i.style.color = chore.color; b.appendChild(i);
+      b.appendChild(el('span', 'oname', a));
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        done(a === 'Both' ? chore.actions.slice() : [a]);
+      });
+      box.appendChild(b);
+    });
+    showSheet();
+  }
+
   // onPick(person) replaces the default (record the chores) — used by groceries.
-  function chooseWho(tile, chores, onPick) {
+  function chooseWho(tile, chores, onPick, actions) {
     if (!onPick) {
       // Spell the chore out here, in case an icon on the tile isn't obvious.
       var t = $('picker-title'), parts = [tile.name];
       if (tile.mode !== 'single') parts.push(chores.map(function (c) { return c.name; }).join(', '));
+      if (actions && actions.length) parts.push(actions.join(' & '));
       t.innerHTML = '';
       t.appendChild(el('span', 'ptitle', parts.join(' · ')));
     }
@@ -340,8 +378,8 @@
         ev.stopPropagation();
         closePicker();
         if (onPick) { onPick(p); return; }
-        var rows = record(chores.map(function (c) { return c.id; }), [p.id]);
-        toast(tile, chores, p, rows);
+        var rows = record(chores.map(function (c) { return c.id; }), [p.id], actions);
+        toast(tile, chores, p, rows, actions);
       });
       box.appendChild(b);
     });
@@ -349,7 +387,9 @@
   }
 
   function openFlow(tile, chores) {
-    if (chores) chooseWho(tile, chores);
+    if (chores && chores.length === 1 && chores[0].actions && chores[0].actions.length) {
+      chooseAction(tile, chores[0], function (acts) { chooseWho(tile, chores, null, acts); });
+    } else if (chores) chooseWho(tile, chores);
     else chooseBins(tile, function (picked) { chooseWho(tile, picked); });
   }
   function closePicker() { $('picker').hidden = true; clearTimeout(pickerTimer); }
@@ -363,7 +403,7 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { $('toast').hidden = true; toastUndo = null; }, 6000);
   }
-  function toast(tile, chores, p, rows) {
+  function toast(tile, chores, p, rows, actions) {
     var t = $('toast-text');
     t.innerHTML = '';
     t.appendChild(el('span', 'tick', '✓'));
@@ -371,6 +411,8 @@
     if (tile.mode !== 'single') chores.forEach(function (c) {
       var i = icon(c.icon, c.name, 'tic'); i.style.color = c.color; t.appendChild(i);
     });
+    var ak = actionIcon(actions);
+    if (ak) t.appendChild(icon(ak, actions.join(' & '), 'tic'));
     t.appendChild(badge(p));
     t.appendChild(el('span', 'tname', p.name));
     showToast(function () { undo(rows); });
@@ -429,15 +471,14 @@
       var line = el('div', 'hrow');
       line.appendChild(badge(p));
       line.appendChild(el('span', 'hname', p.name));
-      if (tile.mode === 'choose') line.appendChild(el('span', 'hwhat', names[r.chore_id] || ''));
+      var what = [tile.mode === 'choose' ? names[r.chore_id] : '', r.action || ''].filter(Boolean).join(' · ');
+      if (what) line.appendChild(el('span', 'hwhat', what));
       line.appendChild(el('span', 'hwhen', when(r.done_at)));
-      var x = el('button', 'hdel');
+      var x = el('button', 'hdel', 'Remove');
       x.type = 'button';
-      x.setAttribute('aria-label', 'Remove');
-      x.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
       x.addEventListener('click', function (ev) {
         ev.stopPropagation(); poke();
-        askRemove(tile, chores, r, p, (tile.mode === 'choose' ? names[r.chore_id] + ' · ' : '') + when(r.done_at));
+        askRemove(tile, chores, r, p, (what ? what + ' · ' : '') + when(r.done_at));
       });
       line.appendChild(x);
       box.appendChild(line);
