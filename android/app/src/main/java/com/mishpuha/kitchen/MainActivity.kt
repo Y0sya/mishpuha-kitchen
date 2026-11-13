@@ -54,6 +54,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         hideBars()
+        Kiosk.configure(this)   // cheap and idempotent; a device-owner app is rarely restarted
         Kiosk.lock(this)
         web.onResume()
     }
