@@ -18,8 +18,7 @@
 
   <div id="picker" hidden>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="picker-title">
-      <h2 id="picker-title"></h2>
-      <p class="hint" id="picker-hint"></p>
+      <div id="picker-title"></div>
       <div id="options"></div>
       <button id="confirm" type="button" aria-label="Done" disabled>
         <svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -27,11 +26,12 @@
     </div>
   </div>
 
-  <div id="toast" hidden><span id="toast-text"></span><button id="undo" type="button">Undo</button></div>
+  <div id="toast" hidden><span id="toast-text"></span><button id="undo" type="button" aria-label="Undo"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 010 11H11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
 
   <div id="sleep" hidden></div>
 
   <script src="env.js"></script><!-- Supabase URL + key; generated, not in git -->
+  <script src="icons.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>

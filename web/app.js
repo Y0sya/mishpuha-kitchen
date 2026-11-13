@@ -37,14 +37,22 @@
   }
 
   // ---------- state ----------
-  // tiles: [{id, name, mode: 'single'|'split'|'choose', chores: [{id, name, color}]}]
+  // tiles: [{id, name, icon, mode: 'single'|'split'|'choose', chores: [{id, name, icon, color}]}]
   function localTiles() {
     return (CFG.tiles || []).map(function (t) {
       var chores = t.chores && t.chores.length
-        ? t.chores.map(function (c) { return { id: t.name + '/' + c.name, name: c.name, color: c.color }; })
-        : [{ id: t.name, name: t.name, color: t.color }];
-      return { id: t.name, name: t.name, mode: t.mode || 'single', chores: chores };
+        ? t.chores.map(function (c) { return { id: t.name + '/' + c.name, name: c.name, icon: c.icon, color: c.color }; })
+        : [{ id: t.name, name: t.name, icon: t.icon, color: t.color }];
+      return { id: t.name, name: t.name, icon: t.icon, mode: t.mode || 'single', chores: chores };
     });
+  }
+  // An icon from icons.js (falls back to the word if the icon is missing).
+  function icon(key, label, cls) {
+    var s = el('span', 'ic' + (cls ? ' ' + cls : ''));
+    var svg = (window.KD_ICONS || {})[key];
+    if (svg) s.innerHTML = svg; else s.textContent = label;
+    s.setAttribute('aria-label', label);
+    return s;
   }
   function localFamily() {
     return (CFG.family || []).map(function (p) { return { id: p.name, name: p.name, color: p.color }; });
@@ -88,8 +96,8 @@
     var since = new Date(Date.now() - LOG_DAYS * 864e5).toISOString();
     return Promise.all([
       api('GET', 'family?select=id,name,color&order=sort'),
-      api('GET', 'tiles?select=id,name,mode&active=is.true&order=sort'),
-      api('GET', 'chores?select=id,tile_id,name,color&active=is.true&order=sort'),
+      api('GET', 'tiles?select=id,name,icon,mode&active=is.true&order=sort'),
+      api('GET', 'chores?select=id,tile_id,name,icon,color&active=is.true&order=sort'),
       api('GET', 'chore_log?select=id,chore_id,person_id,done_at&done_at=gte.' + since + '&order=done_at.desc&limit=3000'),
     ]).then(function (res) {
       var tiles = res[1].map(function (t) {
@@ -136,15 +144,13 @@
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   function startOfDay(d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
-  function ago(iso) {
+  function ago(iso) {   // short: now, 5m, 3h, 2d
     var t = new Date(iso), now = new Date(), min = Math.round((now - t) / 6e4);
-    if (min < 1) return 'just now';
-    if (min < 60) return min + ' min ago';
+    if (min < 1) return 'now';
+    if (min < 60) return min + 'm';
     var days = Math.round((startOfDay(now) - startOfDay(t)) / 864e5);
-    if (days === 0) return Math.floor(min / 60) + ' h ago';
-    if (days === 1) return 'yesterday';
-    if (days < 7) return DAYS[t.getDay()];
-    return days + ' days ago';
+    if (days === 0) return Math.floor(min / 60) + 'h';
+    return days + 'd';
   }
   function weekStart() { var d = startOfDay(new Date()); d.setDate(d.getDate() - d.getDay()); return d; } // Sunday
 
@@ -173,16 +179,24 @@
     return { at: top.done_at, people: people.map(person).filter(Boolean), what: what };
   }
 
-  // Bottom of a tile: "● Dad & Mom" then "Recycling · 2 h ago". Marks the tile done today.
-  function lastBlock(box, choreIds, names) {
+  // A person's coloured initial.
+  function badge(p, cls) {
+    var b = el('span', cls || 'badge', p.name.charAt(0).toUpperCase());
+    b.style.background = p.color;
+    b.title = p.name;
+    return b;
+  }
+
+  // Bottom of a tile: who (coloured initials), what (small icons, trash only), how long ago.
+  // Also rings the tile in the person's colour if it was done today.
+  function lastBlock(box, choreIds, chores) {
     var info = latest(choreIds), wrap = el('span', 'last');
-    if (!info) { wrap.appendChild(el('span', 'when', 'Not yet')); return wrap; }
-    var who = el('span', 'who');
-    info.people.forEach(function (p) { var d = el('i', 'dot'); d.style.background = p.color; who.appendChild(d); });
-    who.appendChild(el('b', null, joinNames(info.people.map(function (p) { return p.name; })) || '?'));
-    wrap.appendChild(who);
-    var what = names ? info.what.map(function (id) { return names[id]; }).filter(Boolean).join(', ') : '';
-    if (what) wrap.appendChild(el('span', 'what', what));
+    if (!info) return wrap;
+    info.people.forEach(function (p) { wrap.appendChild(badge(p)); });
+    if (chores) info.what.forEach(function (id) {
+      var c = chores[id]; if (!c) return;
+      var i = icon(c.icon, c.name, 'mini'); i.style.color = c.color; wrap.appendChild(i);
+    });
     wrap.appendChild(el('span', 'when', ago(info.at)));
     if (new Date(info.at) >= startOfDay(new Date())) {
       box.classList.add('today');
@@ -199,14 +213,16 @@
       var ids = t.chores.map(function (c) { return c.id; });
       if (t.mode === 'split') {
         var box = el('div', 'tile split');
-        box.appendChild(el('span', 'name', t.name));
+        box.setAttribute('aria-label', t.name);
+        box.appendChild(icon(t.icon, t.name, 'head'));
         var halves = el('div', 'halves');
         t.chores.forEach(function (c) {
           var h = el('button', 'half');
           h.type = 'button';
-          h.style.background = tint(c.color, 0.10);
-          var label = el('span', 'hname', c.name); label.style.color = c.color;
-          h.appendChild(label);
+          h.setAttribute('aria-label', t.name + ' ' + c.name);
+          h.style.background = tint(c.color, 0.12);
+          var ic = icon(c.icon, c.name, 'hicon'); ic.style.color = c.color;
+          h.appendChild(ic);
           h.appendChild(lastBlock(h, [c.id]));
           if (flash[c.id]) h.classList.add('flash');
           h.addEventListener('click', function () { openFlow(t, [c]); });
@@ -218,10 +234,11 @@
       }
       var b = el('button', 'tile');
       b.type = 'button';
-      b.appendChild(el('span', 'name', t.name));
-      var names = null;
-      if (t.mode === 'choose') { names = {}; t.chores.forEach(function (c) { names[c.id] = c.name; }); }
-      b.appendChild(lastBlock(b, ids, names));
+      b.setAttribute('aria-label', t.name);
+      b.appendChild(icon(t.icon, t.name, 'main'));
+      var byId = null;
+      if (t.mode === 'choose') { byId = {}; t.chores.forEach(function (c) { byId[c.id] = c; }); }
+      b.appendChild(lastBlock(b, ids, byId));
       if (ids.some(function (id) { return flash[id]; })) b.classList.add('flash');
       b.addEventListener('click', function () { openFlow(t, t.mode === 'choose' ? null : t.chores); });
       tiles.appendChild(b);
@@ -242,72 +259,95 @@
     });
   }
 
-  // ---------- picker: (which ones?) → who? → ✓ ----------
+
+  // ---------- picker ----------
+  // Trash: tap bins (several allowed) → ✓ → tap a name. Everything else: tap a name. Done.
   var pickerTimer = null;
   function poke() { clearTimeout(pickerTimer); pickerTimer = setTimeout(closePicker, 30000); }
 
-  // choices: [{id, label, color, avatar?}] → calls done(selectedIds) when ✓ is tapped.
-  function step(title, hint, choices, done) {
-    $('picker-title').textContent = title;
-    $('picker-hint').textContent = hint;
+  // What the sheet is about, as icons: [tile icon, chore icon...]
+  function setTitle(tile, chores) {
+    var t = $('picker-title');
+    t.innerHTML = '';
+    t.appendChild(icon(tile.icon, tile.name, 'big'));
+    (chores || []).forEach(function (c) {
+      if (c.icon === tile.icon) return;
+      var i = icon(c.icon, c.name, 'big'); i.style.color = c.color; t.appendChild(i);
+    });
+  }
+  function showSheet() { $('picker').hidden = false; poke(); }
+
+  function chooseBins(tile, done) {
+    setTitle(tile, null);
     var box = $('options'), ok = $('confirm'), picked = [];
     box.innerHTML = '';
-    ok.disabled = true;
-    choices.forEach(function (ch) {
-      var b = el('button', 'option');
+    box.className = 'bins';
+    ok.hidden = false; ok.disabled = true;
+    tile.chores.forEach(function (c) {
+      var b = el('button', 'option bin');
       b.type = 'button';
       b.setAttribute('aria-pressed', 'false');
-      b.style.setProperty('--oc', ch.color || 'var(--ink2)');
-      var badge = el('span', ch.avatar ? 'avatar' : 'swatch', ch.avatar || '');
-      badge.style.background = ch.color || 'var(--ink2)';
-      b.appendChild(badge);
-      b.appendChild(el('span', 'oname', ch.label));
+      b.setAttribute('aria-label', c.name);
+      b.style.setProperty('--oc', c.color || 'var(--ink2)');
+      var i = icon(c.icon, c.name, 'opt'); i.style.color = c.color; b.appendChild(i);
       b.addEventListener('click', function (ev) {
         ev.stopPropagation(); poke();
-        var i = picked.indexOf(ch.id);
-        if (i < 0) picked.push(ch.id); else picked.splice(i, 1);
-        b.setAttribute('aria-pressed', i < 0 ? 'true' : 'false');
+        var k = picked.indexOf(c.id);
+        if (k < 0) picked.push(c.id); else picked.splice(k, 1);
+        b.setAttribute('aria-pressed', k < 0 ? 'true' : 'false');
         ok.disabled = !picked.length;
       });
       box.appendChild(b);
     });
     ok.onclick = function (ev) {
       ev.stopPropagation();
-      if (!picked.length) return;
-      // Keep the on-screen order, not the tap order.
-      done(choices.map(function (c) { return c.id; }).filter(function (id) { return picked.indexOf(id) >= 0; }));
+      if (picked.length) done(tile.chores.filter(function (c) { return picked.indexOf(c.id) >= 0; }));
     };
-    $('picker').hidden = false;
-    poke();
+    showSheet();
+  }
+
+  function chooseWho(tile, chores) {
+    setTitle(tile, tile.mode === 'single' ? null : chores);
+    var box = $('options');
+    box.innerHTML = '';
+    box.className = 'people';
+    $('confirm').hidden = true;
+    state.family.forEach(function (p) {
+      var b = el('button', 'option person');
+      b.type = 'button';
+      b.appendChild(badge(p, 'avatar'));
+      b.appendChild(el('span', 'oname', p.name));
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        closePicker();
+        var rows = record(chores.map(function (c) { return c.id; }), [p.id]);
+        toast(tile, chores, p, rows);
+      });
+      box.appendChild(b);
+    });
+    showSheet();
   }
 
   function openFlow(tile, chores) {
-    var title = tile.mode === 'split' && chores ? tile.name + ' · ' + chores[0].name : tile.name;
-    function askWho(picked) {
-      step(title, 'Who did it?', state.family.map(function (p) {
-        return { id: p.id, label: p.name, color: p.color, avatar: p.name.charAt(0).toUpperCase() };
-      }), function (people) {
-        closePicker();
-        var rows = record(picked.map(function (c) { return c.id; }), people);
-        var what = tile.mode === 'choose' ? picked.map(function (c) { return c.name; }).join(', ') : title;
-        toast(what + ' · ' + joinNames(people.map(function (id) { return person(id).name; })), rows);
-      });
-    }
-    if (chores) { askWho(chores); return; }
-    step(tile.name, 'Which ones?', tile.chores.map(function (c) {
-      return { id: c.id, label: c.name, color: c.color };
-    }), function (ids) {
-      askWho(tile.chores.filter(function (c) { return ids.indexOf(c.id) >= 0; }));
-    });
+    if (chores) chooseWho(tile, chores);
+    else chooseBins(tile, function (picked) { chooseWho(tile, picked); });
   }
   function closePicker() { $('picker').hidden = true; clearTimeout(pickerTimer); }
   $('picker').addEventListener('click', function (ev) { if (ev.target === $('picker')) closePicker(); });
 
-  // ---------- toast ----------
+  // ---------- toast: ✓ [icons] (P) Papa  [undo] ----------
   var toastTimer = null, toastRows = null;
-  function toast(text, rows) {
+  function toast(tile, chores, p, rows) {
     toastRows = rows;
-    $('toast-text').textContent = '✓ ' + text;
+    var t = $('toast-text');
+    t.innerHTML = '';
+    t.appendChild(el('span', 'tick', '✓'));
+    t.appendChild(icon(tile.icon, tile.name, 'tic'));
+    if (tile.mode !== 'single') chores.forEach(function (c) {
+      var i = icon(c.icon, c.name, 'tic'); i.style.color = c.color; t.appendChild(i);
+    });
+    t.appendChild(badge(p));
+    t.appendChild(el('span', 'tname', p.name));
     $('toast').hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { $('toast').hidden = true; toastRows = null; }, 6000);

@@ -28,57 +28,60 @@ header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 24px; }
 h1 { margin: 0; font-size: 44px; font-weight: 600; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
 #date { font-size: 20px; color: var(--muted); }
 
-/* Chore tiles: square, four across (two in portrait) */
+/* Tiles: small fixed squares, so chores, calendar, shopping… can share the screen.
+   A split tile (Dishwasher, Table) is two squares wide: one square per half. */
+:root { --tile: 104px; --gap: 12px; }
 #tiles {
-  flex: 1; min-height: 0;
-  display: grid; gap: 16px; align-content: start;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: grid; gap: var(--gap); align-content: start; justify-content: start;
+  grid-template-columns: repeat(auto-fill, var(--tile)); grid-auto-rows: var(--tile);
 }
-@media (orientation: portrait) { #tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-
 .tile, .half {
-  position: relative;
-  display: flex; flex-direction: column; justify-content: space-between; text-align: left;
-  border-radius: 18px; cursor: pointer;
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border-radius: 16px; cursor: pointer; padding: 0;
   transition: transform .08s ease, background .15s ease;
 }
-.tile {
-  aspect-ratio: 1 / 1; padding: 18px 20px;
-  background: var(--surface); border: 1px solid var(--ring);
-}
-button.tile:active, .half:active { transform: scale(0.97); background: var(--press); }
-.tile .name { font-size: 26px; font-weight: 600; letter-spacing: -0.3px; }
+.tile { background: var(--surface); border: 1px solid var(--ring); }
+button.tile:active, .half:active { transform: scale(0.95); background: var(--press); }
 
-.last { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.last .who { display: flex; align-items: center; gap: 5px; font-size: 17px; color: var(--ink2); min-width: 0; }
-.last .who b { font-weight: 500; margin-left: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.last .what { font-size: 15px; color: var(--ink2); }
-.last .when { font-size: 15px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ic { display: inline-flex; line-height: 0; color: var(--ink); }
+.ic svg { width: 100%; height: 100%; }
+.ic.main { width: 46px; height: 46px; margin-top: -14px; }
+
+/* who did it last + how long ago, along the bottom edge */
+.last {
+  position: absolute; left: 8px; right: 8px; bottom: 7px;
+  display: flex; align-items: center; justify-content: center; gap: 3px; min-width: 0;
+}
+.badge {
+  width: 20px; height: 20px; border-radius: 50%; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 11px; font-weight: 700;
+}
+.ic.mini { width: 16px; height: 16px; }
+.last .when { font-size: 12px; color: var(--muted); margin-left: 2px; font-variant-numeric: tabular-nums; }
 .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; display: inline-block; }
 
 .tile.today, .half.today { border-color: transparent; box-shadow: inset 0 0 0 2.5px var(--tc, var(--ok)); }
 .flash { animation: flash .9s ease; }
 @keyframes flash { 0% { background: var(--tc); } 100% { } }
 
-/* Split tile (dishwasher): title, then two halves side by side */
-.tile.split { padding: 18px 12px 12px; cursor: default; }
-.tile.split .name { padding: 0 8px; }
-.halves { flex: 1; display: flex; gap: 8px; margin-top: 12px; min-height: 0; }
-.half {
-  flex: 1; min-width: 0; padding: 12px 12px 10px;
-  border: 0; border-radius: 12px;
+.tile.split { grid-column: span 2; padding: 6px; cursor: default; }
+.tile.split .halves { display: flex; gap: 6px; width: 100%; height: 100%; }
+.tile.split .ic.head {
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%); z-index: 1;
+  width: 22px; height: 22px; padding: 3px; border-radius: 50%;
+  background: var(--surface); color: var(--ink2); box-sizing: content-box;
 }
-.half .hname { font-size: 22px; font-weight: 600; }
-.half .last .who { font-size: 15px; }
-.half .last .when { font-size: 13px; }
+.half { flex: 1; height: 100%; border: 0; border-radius: 11px; }
+.half .ic.hicon { width: 40px; height: 40px; margin-top: -10px; }
 
 /* This week, per person */
-footer { display: flex; gap: 28px; margin-top: 22px; font-size: 18px; color: var(--ink2); align-items: center; }
+footer { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: auto; padding-top: 18px; font-size: 18px; color: var(--ink2); align-items: center; }
 footer .label { color: var(--muted); }
 footer .who { display: flex; align-items: center; gap: 8px; }
 footer .n { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
 
-/* Picker: tap to select (several allowed), ✓ to go on */
+/* Picker: who did it (one tap), or for Trash: which bins (several) then ✓ */
 #picker {
   position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 10;
   background: var(--shade);
@@ -88,41 +91,42 @@ footer .n { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-n
 #picker[hidden] { display: none; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .sheet {
-  background: var(--surface); border-radius: 24px; padding: 30px 36px 28px;
+  background: var(--surface); border-radius: 24px; padding: 26px 30px 28px;
   box-shadow: 0 12px 40px rgba(0,0,0,.25); max-width: calc(100vw - 48px);
   display: flex; flex-direction: column; align-items: center;
 }
-.sheet h2 { margin: 0; font-size: 32px; font-weight: 600; text-align: center; }
-.sheet .hint { margin: 6px 0 26px; text-align: center; color: var(--muted); font-size: 18px; }
-#options { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
+#picker-title { display: flex; gap: 14px; align-items: center; margin-bottom: 22px; }
+.ic.big { width: 48px; height: 48px; }
+#options { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; max-width: 760px; }
 .option {
-  position: relative;
-  width: 150px; padding: 18px 8px 16px; border-radius: 20px;
+  position: relative; border-radius: 20px;
   background: transparent; border: 1px solid var(--ring); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   transition: transform .08s ease, box-shadow .1s ease;
 }
-.option:active { transform: scale(0.95); }
+.option:active { transform: scale(0.94); background: var(--press); }
+.option.person { width: 132px; height: 132px; }
+.option .avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 32px; font-weight: 600;
+}
+.option .oname { font-size: 19px; font-weight: 500; white-space: nowrap; }
+.option.bin { width: 140px; height: 140px; }
+.ic.opt { width: 72px; height: 72px; }
 .option[aria-pressed="true"] { border-color: transparent; box-shadow: inset 0 0 0 3px var(--oc); background: var(--press); }
 .option[aria-pressed="true"]::after {   /* check badge */
   content: '✓'; position: absolute; top: 8px; right: 10px;
   width: 26px; height: 26px; border-radius: 50%; background: var(--oc); color: #fff;
   font-size: 16px; font-weight: 700; line-height: 26px; text-align: center;
 }
-.option .avatar, .option .swatch {
-  width: 84px; height: 84px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 38px; font-weight: 600;
-}
-.option .swatch { border-radius: 22px; }
-.option .oname { font-size: 22px; font-weight: 500; }
-
 #confirm {
-  margin-top: 26px; width: 92px; height: 92px; border-radius: 50%; border: 0;
+  margin-top: 24px; width: 92px; height: 92px; border-radius: 50%; border: 0;
   background: var(--ok); color: #fff; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: transform .08s ease, opacity .15s ease;
 }
+#confirm[hidden] { display: none; }
 #confirm:active { transform: scale(0.94); }
 #confirm:disabled { opacity: .25; cursor: default; }
 
@@ -139,4 +143,7 @@ footer .n { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-n
   box-shadow: 0 4px 18px rgba(0,0,0,.25);
 }
 #toast[hidden] { display: none; }
-#undo { background: transparent; color: var(--page); border: 1px solid rgba(127,127,127,.5); border-radius: 999px; padding: 8px 18px; font-size: 17px; cursor: pointer; }
+#toast-text { display: flex; align-items: center; gap: 8px; }
+#toast .tick { font-weight: 700; color: var(--ok); }
+#toast .ic.tic { width: 28px; height: 28px; color: var(--page); }
+#undo { background: transparent; color: var(--page); border: 1px solid rgba(127,127,127,.5); border-radius: 999px; padding: 6px 14px; cursor: pointer; display: flex; align-items: center; }

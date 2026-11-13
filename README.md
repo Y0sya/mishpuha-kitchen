@@ -1,8 +1,9 @@
 # Mishpuha kitchen dashboard
 
-A wall tablet in the kitchen (Galaxy Tab S3). Tap a chore, tap who did it (one or more
-people), tap ✓. The dishwasher tile is split into Meat | Dairy; the trash tile first asks
-which bins (Recycling, Garbage, Compost).
+A wall tablet in the kitchen (Galaxy Tab S3, landscape). Small icon tiles: tap a chore, tap
+who did it. Dishwasher is split into Meat | Dairy, Table into Set up | Clean; Trash first
+asks which bins (Recycling, Garbage, Compost; several allowed) and needs ✓. Each tile shows
+who did it last (coloured initial) and how long ago.
 Coming next: shopping list ("we ran out of peanut butter", by voice or typing, plus items
 the family Telegram bot spots in the group chat), calendar, candle-lighting times.
 
@@ -32,7 +33,8 @@ supabase/schema.sql the database: family, chores, chore_log, shopping
 2. Commit and push to `main`. GitHub Actions builds the app and publishes it; the tablet
    updates itself (it checks every 30 min).
 
-Design rules: big targets, few words, works for anyone walking past (kids, grandparents),
+Icons live in `web/icons.js` (Material Symbols, Apache 2.0; meat and milk from Tabler Icons, MIT).
+Design rules: icons over words, big targets, few words, works for anyone walking past (kids, grandparents),
 nothing that needs a keyboard. Same look as Yosya's life tracker.
 
 ## Kiosk mode (one-time tablet setup)

@@ -15,6 +15,7 @@ create table if not exists family (
 create table if not exists tiles (
   id     uuid primary key default gen_random_uuid(),
   name   text not null,
+  icon   text,                              -- key in web/icons.js; the name is the fallback
   mode   text not null default 'single' check (mode in ('single', 'split', 'choose')),
   sort   int  not null default 0,
   active boolean not null default true      -- untick to hide a tile without losing its history
@@ -25,6 +26,7 @@ create table if not exists chores (
   id      uuid primary key default gen_random_uuid(),
   tile_id uuid not null references tiles(id) on delete cascade,
   name    text not null,
+  icon    text,
   color   text,                              -- half/option colour, e.g. meat red, dairy blue
   sort    int  not null default 0,
   active  boolean not null default true
@@ -68,21 +70,28 @@ create policy "tablet reads shopping"  on shopping  for select to anon using (tr
 create policy "tablet adds shopping"   on shopping  for insert to anon with check (true);
 create policy "tablet ticks shopping"  on shopping  for update to anon using (true) with check (true);
 
--- Starting tiles (edit names/colours in the table editor afterwards).
+-- Starting family and tiles (edit in the table editor afterwards).
+insert into family (name, color, sort)
+select * from (values
+  ('Mama', '#2a78d6', 1), ('Papa', '#eb6834', 2), ('Yosya', '#1baf7a', 3), ('David', '#6250d6', 4),
+  ('Shmulik', '#c98500', 5), ('Yoni', '#0f9fb5', 6), ('Sara Bella', '#d6409f', 7)
+) v where not exists (select 1 from family);
+
 do $$
-declare dw uuid; tb uuid; tr uuid; ct uuid; sw uuid;
+declare dw uuid; tb uuid; dn uuid; ct uuid; sw uuid; tr uuid;
 begin
   if not exists (select 1 from tiles) then
-    insert into tiles (name, mode, sort) values ('Dishwasher', 'split', 1) returning id into dw;
-    insert into tiles (name, mode, sort) values ('Table', 'split', 2) returning id into tb;
-    insert into tiles (name, mode, sort) values ('Countertops', 'single', 3) returning id into ct;
-    insert into tiles (name, mode, sort) values ('Sweep', 'single', 4) returning id into sw;
-    insert into tiles (name, mode, sort) values ('Trash', 'choose', 5) returning id into tr;
-    insert into chores (tile_id, name, color, sort) values
-      (dw, 'Meat', '#c9372f', 1), (dw, 'Dairy', '#2a78d6', 2),
-      (tb, 'Set up', '#1baf7a', 1), (tb, 'Clean', '#c98500', 2),
-      (ct, 'Countertops', null, 1), (sw, 'Sweep', null, 1),
-      (tr, 'Recycling', '#2a78d6', 1), (tr, 'Garbage', '#52514e', 2), (tr, 'Compost', '#2e9e5b', 3);
+    insert into tiles (name, icon, mode, sort) values ('Dishwasher', 'dishwasher', 'split', 1) returning id into dw;
+    insert into tiles (name, icon, mode, sort) values ('Table', 'table', 'split', 2) returning id into tb;
+    insert into tiles (name, icon, mode, sort) values ('Dinner', 'dinner', 'single', 3) returning id into dn;
+    insert into tiles (name, icon, mode, sort) values ('Countertops', 'countertops', 'single', 4) returning id into ct;
+    insert into tiles (name, icon, mode, sort) values ('Sweep', 'sweep', 'single', 5) returning id into sw;
+    insert into tiles (name, icon, mode, sort) values ('Trash', 'trash', 'choose', 6) returning id into tr;
+    insert into chores (tile_id, name, icon, color, sort) values
+      (dw, 'Meat', 'meat', '#c9372f', 1), (dw, 'Dairy', 'dairy', '#2a78d6', 2),
+      (tb, 'Set up', 'setup', '#1baf7a', 1), (tb, 'Clean', 'clean', '#c98500', 2),
+      (dn, 'Dinner', 'dinner', null, 1), (ct, 'Countertops', 'countertops', null, 1), (sw, 'Sweep', 'sweep', null, 1),
+      (tr, 'Recycling', 'recycling', '#2a78d6', 1), (tr, 'Garbage', 'garbage', '#52514e', 2), (tr, 'Compost', 'compost', '#2e9e5b', 3);
   end if;
 end $$;
 
