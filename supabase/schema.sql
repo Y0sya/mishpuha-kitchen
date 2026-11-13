@@ -57,6 +57,16 @@ create table if not exists shopping (
 );
 create index if not exists shopping_open on shopping (added_at) where bought_at is null;
 
+-- Feedback from the round button on the tablet. Read it in the table editor; tick `done`.
+create table if not exists feedback (
+  id          uuid primary key,
+  text        text not null,
+  person_id   uuid references family(id) on delete set null,
+  person_name text,
+  created_at  timestamptz not null default now(),
+  done        boolean not null default false
+);
+
 -- The tablet uses the publishable (anon) key, with no login: it may read everything,
 -- add and undo chore entries, and add/tick shopping items. Nobody can edit people or
 -- chores without the dashboard.
@@ -65,6 +75,7 @@ alter table tiles     enable row level security;
 alter table chores    enable row level security;
 alter table chore_log enable row level security;
 alter table shopping  enable row level security;
+alter table feedback  enable row level security;
 
 create policy "tablet reads family"    on family    for select to anon using (true);
 create policy "tablet reads tiles"     on tiles     for select to anon using (true);
@@ -77,6 +88,7 @@ create policy "tablet reads shopping"  on shopping  for select to anon using (tr
 create policy "tablet adds shopping"   on shopping  for insert to anon with check (true);
 create policy "tablet ticks shopping"  on shopping  for update to anon using (true) with check (true);
 create policy "tablet removes shopping" on shopping for delete to anon using (true);   -- hold an item to remove it
+create policy "tablet sends feedback"  on feedback  for insert to anon with check (true);   -- write-only
 
 -- Starting family and tiles (edit in the table editor afterwards).
 insert into family (name, color, initials, sort)

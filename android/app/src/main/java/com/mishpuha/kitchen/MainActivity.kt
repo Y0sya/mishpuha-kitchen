@@ -7,6 +7,8 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.WindowManager
+import android.webkit.JavascriptInterface
+import java.io.File
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -44,6 +46,14 @@ class MainActivity : Activity() {
                     !request.url.toString().startsWith("file:///android_asset/")
             }
         }
+        // Feedback also goes to a plain file, readable over USB:
+        //   adb shell cat /sdcard/Android/data/com.mishpuha.kitchen/files/feedback.jsonl
+        web.addJavascriptInterface(object {
+            @JavascriptInterface
+            fun feedback(json: String) {
+                runCatching { File(getExternalFilesDir(null), "feedback.jsonl").appendText(json + "\n") }
+            }
+        }, "KitchenNative")
         setContentView(web)
         web.loadUrl("file:///android_asset/web/index.html")
 

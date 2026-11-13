@@ -88,7 +88,9 @@
     if (!REMOTE || flushing || !state.outbox.length) return Promise.resolve();
     flushing = true;
     var job = state.outbox[0], p;
-    if (job.table === 'shopping') {
+    if (job.table === 'feedback') {
+      p = api('POST', 'feedback?on_conflict=id', job.row, 'resolution=ignore-duplicates,return=minimal');
+    } else if (job.table === 'shopping') {
       p = job.op === 'put'
         ? api('POST', 'shopping?on_conflict=id', job.row, 'resolution=merge-duplicates,return=minimal')
         : api('DELETE', 'shopping?id=eq.' + encodeURIComponent(job.row.id));
@@ -436,6 +438,7 @@
   var toastTimer = null, toastUndo = null;
   function showToast(undoFn) {
     toastUndo = undoFn;
+    $('undo').hidden = !undoFn;
     $('toast').hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { $('toast').hidden = true; toastUndo = null; }, 6000);
@@ -695,6 +698,59 @@
   $('grequest').appendChild(icon('request', 'Request something', 'gbicon'));
   $('gfinished').addEventListener('click', function () { openGrocery('finished'); });
   $('grequest').addEventListener('click', function () { openGrocery('request'); });
+
+  // ---------- feedback ----------
+  // Round button, bottom right. Text plus (optionally) who's writing. Kept on the tablet
+  // (kd.feedback) and sent to the Supabase `feedback` table when it's set up.
+  var fbWho = null, fbTimer = null;
+  function closeFeedback() { $('fsheet').hidden = true; $('ftext').blur(); clearTimeout(fbTimer); }
+  function openFeedback() {
+    fbWho = null;
+    $('ftext').value = '';
+    $('fsend').disabled = true;
+    var box = $('fwho');
+    box.innerHTML = '';
+    state.family.forEach(function (p) {
+      var b = el('button', 'fperson');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', 'false');
+      b.appendChild(badge(p));
+      b.appendChild(el('span', null, p.name));
+      b.addEventListener('click', function () {
+        fbWho = fbWho === p.id ? null : p.id;   // optional; tap again to clear
+        [].forEach.call(box.children, function (x) { x.setAttribute('aria-pressed', 'false'); });
+        if (fbWho) b.setAttribute('aria-pressed', 'true');
+        armFb();
+      });
+      box.appendChild(b);
+    });
+    $('fsheet').hidden = false;
+    armFb();
+    setTimeout(function () { $('ftext').focus(); }, 50);
+  }
+  function armFb() { clearTimeout(fbTimer); fbTimer = setTimeout(closeFeedback, 3 * 60000); }
+  $('ficon').appendChild(icon('feedback', '', 'fic'));
+  $('fbtn').appendChild(icon('feedback', 'Feedback', 'fbic'));
+  $('fbtn').addEventListener('click', openFeedback);
+  $('fcancel').addEventListener('click', closeFeedback);
+  $('fsheet').addEventListener('click', function (ev) { if (ev.target === $('fsheet')) closeFeedback(); });
+  $('ftext').addEventListener('input', function () { $('fsend').disabled = !$('ftext').value.trim(); armFb(); });
+  $('fsend').addEventListener('click', function () {
+    var text = $('ftext').value.trim();
+    if (!text) return;
+    var row = { id: uuid(), text: text, person_id: REMOTE ? fbWho : null, person_name: fbWho ? (person(fbWho) || {}).name : null,
+                created_at: new Date().toISOString() };
+    var all = load('kd.feedback', []); all.push(row); save('kd.feedback', all);
+    try { if (window.KitchenNative) window.KitchenNative.feedback(JSON.stringify(row)); } catch (e) {}
+    state.outbox.push({ table: 'feedback', op: 'put', row: row });
+    persist(); flush();
+    closeFeedback();
+    var t = $('toast-text');
+    t.innerHTML = '';
+    t.appendChild(el('span', 'tick', '✓'));
+    t.appendChild(el('span', 'tname', 'Thanks, feedback saved'));
+    showToast(null);
+  });
 
   // ---------- candle lighting & havdalah (hebcal.com) ----------
   var shabbat = load('kd.shabbat', null);

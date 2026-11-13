@@ -13,6 +13,9 @@ your initial is just added to that row. Tap a row once it's bought; hold it to r
 
 **Top right:** this week's candle lighting and havdalah (hebcal.com, Vaughan).
 
+**Feedback:** the round button bottom-right. Saved to the Supabase `feedback` table (once set
+up) and to a file on the tablet: `adb shell cat /sdcard/Android/data/com.mishpuha.kitchen/files/feedback.jsonl`.
+
 Coming next: voice entry (hold the home button), Telegram bot items, calendar.
 
 ## How it fits together

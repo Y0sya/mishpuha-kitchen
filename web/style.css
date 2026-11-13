@@ -264,3 +264,39 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 .last .when { margin-left: 4px; }
 
 #toast .gone { text-decoration: line-through; opacity: .8; }
+
+/* ---------- Feedback: round button bottom-right + dialog ---------- */
+#fbtn {
+  position: fixed; right: 22px; bottom: 22px; z-index: 5;
+  width: 58px; height: 58px; border-radius: 50%; border: 0; cursor: pointer;
+  background: var(--ink); color: var(--page); box-shadow: 0 4px 14px rgba(0,0,0,.18);
+  display: flex; align-items: center; justify-content: center;
+}
+#fbtn:active { transform: scale(0.94); }
+.ic.fbic { width: 28px; height: 28px; color: inherit; }
+#glist { padding-bottom: 72px; }   /* last rows can scroll clear of the button */
+#fsheet {
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 30;
+  background: var(--shade); display: flex; align-items: flex-start; justify-content: center; padding-top: 24px;
+  animation: fade .12s ease;
+}
+#fsheet[hidden] { display: none; }
+.fsheet { width: 680px; max-width: 90vw; align-items: stretch; gap: 14px; }
+.ftop { display: flex; align-items: center; gap: 10px; font-size: 22px; color: var(--ink2); }
+.ic.fic { width: 30px; height: 30px; }
+#ftext {
+  font: inherit; font-size: 20px; padding: 12px 14px; border-radius: 14px; resize: none;
+  border: 1px solid var(--ring); background: var(--page); color: var(--ink); outline: none;
+}
+#ftext:focus { border-color: var(--ok); }
+#fwho { display: flex; flex-wrap: wrap; gap: 8px; }
+.fperson {
+  display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 6px; border-radius: 999px;
+  border: 1px solid var(--ring); background: transparent; font-size: 16px; cursor: pointer;
+}
+.fperson[aria-pressed="true"] { background: var(--press); border-color: var(--ink2); }
+.fbtns { display: flex; justify-content: flex-end; gap: 12px; }
+.fsend { font-size: 19px; height: 56px; padding: 0 30px; border-radius: 14px; border: 0; cursor: pointer;
+         background: var(--ok); color: #fff; font-weight: 600; }
+.fsend:disabled { opacity: .3; cursor: default; }
+#undo[hidden] { display: none; }

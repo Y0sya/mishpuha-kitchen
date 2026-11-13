@@ -1,1 +1,4 @@
-# No reflection or JS bridges yet; R8 defaults are enough.
+# The page calls window.KitchenNative.feedback(...); keep JS-bridge methods by name.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
