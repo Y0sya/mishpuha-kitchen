@@ -10,15 +10,35 @@
   <header>
     <h1 id="clock">--:--</h1>
     <span id="date"></span>
+    <div id="shabbat" hidden></div>
   </header>
 
-  <main id="tiles"></main>
+  <main id="board">
+    <div id="tiles"></div>
+
+    <!-- Groceries: a running list. Finished something → it goes on the list; Request → same.
+         Already on the list → the person's initial is added to that row. Tap a row once bought. -->
+    <section id="grocery" class="panel" aria-label="Groceries">
+      <div class="ghead">
+        <span id="gicon"></span>
+        <span id="gcount"></span>
+        <span class="gspacer"></span>
+        <button id="gfinished" class="gbtn" type="button" aria-label="Finished something"></button>
+        <button id="grequest" class="gbtn" type="button" aria-label="Request something"></button>
+      </div>
+      <ul id="glist"></ul>
+    </section>
+  </main>
 
   <footer id="week"></footer>
 
   <div id="picker" hidden>
-    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+    <div class="sheet" role="dialog" aria-modal="true">
       <div id="picker-title"></div>
+      <div id="entry" hidden>
+        <input id="gitem" type="text" autocomplete="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done" aria-label="What?">
+        <div id="gsuggest"></div>
+      </div>
       <div id="options"></div>
       <button id="confirm" type="button" aria-label="Done" disabled>
         <svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -32,6 +52,7 @@
 
   <script src="env.js"></script><!-- Supabase URL + key; generated, not in git -->
   <script src="icons.js"></script>
+  <script src="foods.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>

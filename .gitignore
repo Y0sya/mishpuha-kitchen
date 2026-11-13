@@ -12,3 +12,6 @@ android/build/
 android/app/build/
 android/.kotlin/
 *.apk
+
+# scratch icon sheets
+web/_preview/

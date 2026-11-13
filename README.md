@@ -3,9 +3,15 @@
 A wall tablet in the kitchen (Galaxy Tab S3, landscape). Small icon tiles: tap a chore, tap
 who did it. Dishwasher is split into Meat | Dairy, Table into Set up | Clean; Trash first
 asks which bins (Recycling, Garbage, Compost; several allowed) and needs ✓. Each tile shows
-who did it last (coloured initial) and how long ago.
-Coming next: shopping list ("we ran out of peanut butter", by voice or typing, plus items
-the family Telegram bot spots in the group chat), calendar, candle-lighting times.
+who did it last (coloured initial) and when.
+
+**Groceries** (right): one running list. Tap the empty jar ("we finished it") or the cart+
+("please buy"), type or pick from suggestions, tap your name. If it's already on the list,
+your initial is just added to that row. Tap a row once it's bought (Undo for 6 s).
+
+**Top right:** this week's candle lighting and havdalah (hebcal.com, Toronto).
+
+Coming next: voice entry (hold the home button), Telegram bot items, calendar.
 
 ## How it fits together
 

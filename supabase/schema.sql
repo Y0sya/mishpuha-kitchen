@@ -40,16 +40,19 @@ create table if not exists chore_log (
 );
 create index if not exists chore_log_done_at on chore_log (done_at desc);
 
--- Next feature: shopping list. The tablet ("ran out of peanut butter") and the
--- family Telegram bot (items spotted in the group chat) both write here.
+-- Groceries: one running list. The tablet ("Finished" peanut butter, or "Request" milk) and
+-- the family Telegram bot (items spotted in the group chat) both write here. An item already
+-- on the list is never added twice: the new person is appended to `people` instead.
 create table if not exists shopping (
   id        uuid primary key default gen_random_uuid(),
   item      text not null,
-  added_by  uuid references family(id) on delete set null,
+  people    uuid[] not null default '{}',     -- family ids who asked for it (initials on the row)
+  kind      text not null default 'request' check (kind in ('request', 'finished')),
   source    text not null default 'tablet',  -- tablet | voice | telegram
   added_at  timestamptz not null default now(),
   bought_at timestamptz                       -- null = still on the list
 );
+create index if not exists shopping_open on shopping (added_at) where bought_at is null;
 
 -- The tablet uses the publishable (anon) key, with no login: it may read everything,
 -- add and undo chore entries, and add/tick shopping items. Nobody can edit people or
@@ -69,6 +72,7 @@ create policy "tablet undoes chores"   on chore_log for delete to anon using (do
 create policy "tablet reads shopping"  on shopping  for select to anon using (true);
 create policy "tablet adds shopping"   on shopping  for insert to anon with check (true);
 create policy "tablet ticks shopping"  on shopping  for update to anon using (true) with check (true);
+create policy "tablet undoes shopping" on shopping  for delete to anon using (added_at > now() - interval '1 day');
 
 -- Starting family and tiles (edit in the table editor afterwards).
 insert into family (name, color, sort)
