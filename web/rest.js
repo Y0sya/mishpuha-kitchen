@@ -64,39 +64,40 @@
   }
 
   // ---------- the sky ----------
-  // Keyframes in minutes after midnight, relative to sunrise (sr) and sunset (ss).
+  // The colour comes from the sun's real height above/below the horizon for this place and
+  // minute, so dawn, dusk and how high the winter vs summer sun gets all follow the season.
   // Each: [top, middle, bottom] colours and how dark it is (1 = night: stars, moon, light text).
   var C = {
     night:     [['#04060d', '#0a1029', '#141c3d'], 1],
-    predawn:   [['#0d1433', '#2f2d5e', '#7a5a86'], 0.8],
+    deepDawn:  [['#070b1c', '#121a3e', '#2c2a55'], 0.95],   // sun 12° down: first hint of light
+    predawn:   [['#0d1433', '#2f2d5e', '#7a5a86'], 0.8],    // 6° down
     sunrise:   [['#33508f', '#c98a9a', '#ffc48f'], 0.35],
-    morning:   [['#4f8fd6', '#8ec1ee', '#dff0ff'], 0],
+    early:     [['#4a7cc4', '#a7c3e3', '#ffe2bf'], 0.1],
+    day:       [['#4f8fd6', '#8ec1ee', '#dff0ff'], 0],
     midday:    [['#3c86d8', '#82bdf0', '#e2f2ff'], 0],
-    afternoon: [['#4a86cc', '#9cc4ea', '#eef3f6'], 0],
     golden:    [['#4d6fae', '#e3b48a', '#ffd29c'], 0.1],
     sunset:    [['#2a3a78', '#b9607a', '#f39a5c'], 0.45],
     dusk:      [['#101836', '#35285e', '#6c4170'], 0.8],
+    deepDusk:  [['#080d22', '#151a3e', '#2a2550'], 0.95],
   };
-  function keyframes(sr, ss) {
-    return [[0, C.night], [sr - 70, C.night], [sr - 35, C.predawn], [sr, C.sunrise], [sr + 60, C.morning],
-            [(sr + ss) / 2, C.midday], [ss - 70, C.afternoon], [ss - 20, C.golden], [ss + 5, C.sunset],
-            [ss + 35, C.dusk], [ss + 80, C.night], [1440, C.night]];
-  }
+  // [sun altitude in degrees, palette]: morning (sun rising) and evening (sun setting).
+  var RISE = [[-90, C.night], [-18, C.night], [-12, C.deepDawn], [-6, C.predawn], [-1, C.sunrise], [5, C.early], [15, C.day], [35, C.midday], [90, C.midday]];
+  var SET  = [[-90, C.night], [-18, C.night], [-12, C.deepDusk], [-6, C.dusk], [-1, C.sunset], [5, C.golden], [15, C.day], [35, C.midday], [90, C.midday]];
   function hex(h) { var n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
   function mix(a, b, f) { var x = hex(a), y = hex(b); return 'rgb(' + [0, 1, 2].map(function (i) { return Math.round(x[i] + (y[i] - x[i]) * f); }).join(',') + ')'; }
-  function minutes(d) { return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60; }
-  function sunMinutes(at) {
-    var sr = 7 * 60, ss = 17 * 60;   // fallback until zmanim arrive
-    var sun = suns[ymd(at)];
-    if (sun && sun.sunrise && sun.sunset) { sr = minutes(new Date(sun.sunrise)); ss = minutes(new Date(sun.sunset)); }
-    else fetchSun(ymd(at));
-    return { sr: sr, ss: ss };
+  // Sun: low-precision position (≈0.5°), then altitude/azimuth here.
+  function sunNow(at) {
+    var n = jd(at) - 2451545.0;
+    var g = (357.528 + 0.9856003 * n) * R;
+    var lam = (280.46 + 0.9856474 * n + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * R, e = 23.439 * R;
+    var ra = Math.atan2(Math.cos(e) * Math.sin(lam), Math.cos(lam)) / R, dec = Math.asin(Math.sin(e) * Math.sin(lam)) / R;
+    return altAz((ra + 360) % 360, dec, lst(at));
   }
 
   function paintSky(at) {
-    var m = minutes(at), s = sunMinutes(at), k = keyframes(s.sr, s.ss), i = 0;
-    while (i < k.length - 2 && k[i + 1][0] <= m) i++;
-    var a = k[i], b = k[i + 1], f = b[0] === a[0] ? 0 : Math.min(1, Math.max(0, (m - a[0]) / (b[0] - a[0])));
+    var sun = sunNow(at), k = sun.az < 180 ? RISE : SET, i = 0;
+    while (i < k.length - 2 && k[i + 1][0] <= sun.alt) i++;
+    var a = k[i], b = k[i + 1], f = Math.min(1, Math.max(0, (sun.alt - a[0]) / (b[0] - a[0])));
     f = f * f * (3 - 2 * f);   // smoothstep: no visible steps
     var top = mix(a[1][0][0], b[1][0][0], f), mid = mix(a[1][0][1], b[1][0][1], f), bot = mix(a[1][0][2], b[1][0][2], f);
     var dark = a[1][1] + (b[1][1] - a[1][1]) * f;
@@ -130,7 +131,7 @@
   }
   function lst(at) { var n = jd(at) - 2451545.0; return ((280.46061837 + 360.98564736629 * n + LON) % 360 + 360) % 360; }
   function toScreen(h) {   // percentages within #rest
-    return { x: (h.az - 60) / 240 * 100, y: 90 - Math.min(h.alt, 82) / 82 * 86 };
+    return { x: (h.az - 60) / 240 * 100, y: 90 - h.alt / 82 * 86 };   // above ~85° goes off the top, like a window
   }
 
   var starEls = null;
@@ -178,6 +179,7 @@
       var h = altAz(list[i][0], list[i][1], L0), e = starEls[i];
       if (h.alt < 1 || h.az < 55 || h.az > 305) { e.style.display = 'none'; continue; }
       var p = toScreen(h);
+      if (p.y < -2) { e.style.display = 'none'; continue; }   // passed over the top of the window
       e.style.display = '';
       e.style.left = p.x.toFixed(2) + '%';
       e.style.top = p.y.toFixed(2) + '%';
@@ -185,6 +187,7 @@
     var m = moonNow(at), mh = altAz(m.ra, m.dec, L0), moon = $('moon');
     if (mh.alt < -2 || mh.az < 50 || mh.az > 310) { moon.style.opacity = '0'; return; }
     var mp = toScreen(mh), key = Math.round(m.elong);
+    if (mp.y < -6) { moon.style.opacity = '0'; return; }
     if (moon.getAttribute('data-e') !== String(key)) { moon.innerHTML = moonSvg(m.elong); moon.setAttribute('data-e', key); }
     moon.style.left = mp.x.toFixed(2) + '%';
     moon.style.top = mp.y.toFixed(2) + '%';
@@ -213,6 +216,9 @@
     times.appendChild(timeBox('candles', 'Candle lighting', p.start, at));
     times.appendChild(timeBox('havdalah', 'Havdalah', p.end, at));
     $('rclock').textContent = hhmm(at);
+    // Late at night the words dim a little: the AMOLED screen stays on all night on Shabbat.
+    var n2 = (CFG.night || { from: 23, to: 6 }), hr = at.getHours();
+    body.classList.toggle('rest-late', n2.from > n2.to ? (hr >= n2.from || hr < n2.to) : (hr >= n2.from && hr < n2.to));
     paintSky(at);
   }
 

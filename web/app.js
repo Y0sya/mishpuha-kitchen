@@ -936,7 +936,8 @@
     var h = new Date().getHours();
     return n.from > n.to ? (h >= n.from || h < n.to) : (h >= n.from && h < n.to);
   }
-  function sleepCheck() { $('sleep').hidden = !(isNight() && Date.now() > awakeUntil); }
+  // On Shabbat / Yom Tov the night sky stays up all night instead (rest.js dims it after 23:00).
+  function sleepCheck() { $('sleep').hidden = document.body.classList.contains('resting') || !(isNight() && Date.now() > awakeUntil); }
   $('sleep').addEventListener('click', function () { awakeUntil = Date.now() + 120000; sleepCheck(); });
   document.addEventListener('click', function () { if (isNight()) awakeUntil = Date.now() + 120000; }, true);
   function drift() {   // move everything a few pixels so no pixel shows the same thing all day

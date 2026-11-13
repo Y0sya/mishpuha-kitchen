@@ -406,3 +406,6 @@ body.resting header, body.resting #board, body.resting #fbtn, body.resting #sbtn
 #camshoot { width: 78px; height: 78px; border-radius: 50%; border: 5px solid var(--ink); background: #fff; cursor: pointer;
   box-shadow: inset 0 0 0 4px var(--surface); }
 #camshoot:active { transform: scale(.94); }
+
+/* Shabbat night (23:00-06:00): dimmer words, the sky stays */
+body.rest-late .rcenter, body.rest-late #rclock { opacity: .55; transition: opacity 3s; }
