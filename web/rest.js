@@ -112,7 +112,7 @@
     var light = Math.min(1, Math.max(0, (0.58 - lum) / 0.03));
     rest.style.setProperty('--ink', mix('#16213d', '#f7f1e3', light));
     rest.style.setProperty('--glow', light > 0.5 ? 'rgba(0,0,0,.45)' : 'rgba(255,255,255,.45)');
-    $('stars').style.opacity = String(Math.max(0, (dark - 0.45) / 0.55));
+    $('stars').style.opacity = dark > 0.3 ? '1' : '0';
     placeSky(at, dark);
   }
 
@@ -142,8 +142,10 @@
       var e = document.createElement('i');
       var size = Math.max(1.2, 4.2 - s[2] * 0.75);                       // brighter = bigger
       var bv = s[3], tint = bv < 0 ? '#cfe0ff' : bv < 0.6 ? '#ffffff' : bv < 1.2 ? '#fff1d6' : '#ffd6b0';
+      var r1 = ((i * 7919) % 1000) / 1000, r2 = ((i * 104729) % 1000) / 1000;   // stable per-star randomness
       e.style.cssText = 'width:' + size.toFixed(1) + 'px;height:' + size.toFixed(1) + 'px;background:' + tint +
-        ';opacity:' + Math.min(1, 1.15 - s[2] * 0.17).toFixed(2) + ';animation-delay:' + ((i * 0.37) % 6).toFixed(1) + 's';
+        ';--d:' + (0.9 + r1 * 1.9).toFixed(2) + 's;animation-delay:-' + (r2 * 3).toFixed(2) + 's' +
+        ';animation-name:' + (r2 < 0.5 ? 'twinkleA' : 'twinkleB');
       box.appendChild(e);
       return e;
     });
@@ -172,19 +174,36 @@
       (k > 0.01 ? '<path d="' + lit + '" fill="#f6efd8"/>' : '') + '</svg>';
   }
 
+  // How faint a star can still be seen (magnitude): ~4.2 on a dark night (all we draw), only the
+  // brightest in twilight, and a bright moon washes out the faint ones (up to ~1.5 magnitudes).
+  function limitMag(dark, moonUp, moonLit) {
+    var t = Math.min(1, Math.max(0, (dark - 0.4) / 0.6));
+    return -1.6 + 5.8 * t * t * (3 - 2 * t) - (moonUp ? 1.5 * moonLit : 0);
+  }
+
   function placeSky(at, dark) {
     if (!starEls) buildStars();
     var L0 = lst(at), list = window.KD_STARS || [];
+    var m = moonNow(at), mh = altAz(m.ra, m.dec, L0);
+    var lim = limitMag(dark, mh.alt > 0, (1 - Math.cos(m.elong * R)) / 2);
     for (var i = 0; i < list.length; i++) {
       var h = altAz(list[i][0], list[i][1], L0), e = starEls[i];
       if (h.alt < 1 || h.az < 55 || h.az > 305) { e.style.display = 'none'; continue; }
       var p = toScreen(h);
       if (p.y < -2) { e.style.display = 'none'; continue; }   // passed over the top of the window
+      // Air: near the horizon light crosses up to ~10x more atmosphere: dimmer, and it twinkles hard.
+      var airmass = 1 / Math.sin(Math.max(2, h.alt) * R);
+      var mag = list[i][2] + 0.25 * (airmass - 1);
+      var o = Math.min(1, Math.max(0, (lim - mag) / 1.2));
+      if (o < 0.03) { e.style.display = 'none'; continue; }
+      var amp = Math.min(0.85, 0.08 + 0.13 * (airmass - 1));        // ~0.08 overhead, ~0.85 low down
       e.style.display = '';
       e.style.left = p.x.toFixed(2) + '%';
       e.style.top = p.y.toFixed(2) + '%';
+      e.style.setProperty('--o', o.toFixed(2));
+      e.style.setProperty('--a', amp.toFixed(2));
     }
-    var m = moonNow(at), mh = altAz(m.ra, m.dec, L0), moon = $('moon');
+    var moon = $('moon');
     if (mh.alt < -2 || mh.az < 50 || mh.az > 310) { moon.style.opacity = '0'; return; }
     var mp = toScreen(mh), key = Math.round(m.elong);
     if (mp.y < -6) { moon.style.opacity = '0'; return; }

@@ -317,8 +317,26 @@ header, #board, #fbtn, #sbtn { transition: opacity 3s ease, filter 3s ease; }
 body.resting header, body.resting #board, body.resting #fbtn, body.resting #sbtn { opacity: 0; filter: blur(6px); pointer-events: none; }
 
 #stars { position: absolute; inset: 0; transition: opacity 2s linear; }
-#stars i { position: absolute; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); animation: twinkle 6s ease-in-out infinite; }
-@keyframes twinkle { 0%, 100% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(.6); } }
+/* Twinkle: each star flickers around its own brightness (--o) by an amount set by how much air
+   it shines through (--a: small overhead, big near the horizon), at its own pace (--d). */
+#stars i { position: absolute; border-radius: 50%; background: #fff; transform: translate(-50%, -50%);
+  opacity: var(--o, 1); animation-duration: var(--d, 2s); animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+@keyframes twinkleA {
+  0%, 100% { opacity: var(--o); transform: translate(-50%, -50%) scale(1); }
+  13% { opacity: calc(var(--o) * (1 - var(--a))); transform: translate(-50%, -50%) scale(calc(1 - var(--a) * .35)); }
+  29% { opacity: calc(var(--o) * (1 - var(--a) * .25)); }
+  44% { opacity: calc(var(--o) * (1 - var(--a) * .8)); transform: translate(-50%, -50%) scale(calc(1 - var(--a) * .2)); }
+  61% { opacity: var(--o); transform: translate(-50%, -50%) scale(1); }
+  78% { opacity: calc(var(--o) * (1 - var(--a) * .55)); }
+}
+@keyframes twinkleB {
+  0%, 100% { opacity: calc(var(--o) * (1 - var(--a) * .4)); transform: translate(-50%, -50%) scale(1); }
+  21% { opacity: var(--o); }
+  36% { opacity: calc(var(--o) * (1 - var(--a) * .9)); transform: translate(-50%, -50%) scale(calc(1 - var(--a) * .3)); }
+  52% { opacity: calc(var(--o) * (1 - var(--a) * .15)); }
+  70% { opacity: calc(var(--o) * (1 - var(--a) * .7)); }
+  86% { opacity: var(--o); transform: translate(-50%, -50%) scale(1); }
+}
 
 #moon {
   position: absolute; width: 58px; height: 58px; margin: -29px 0 0 -29px;
