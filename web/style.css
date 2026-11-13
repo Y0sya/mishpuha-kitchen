@@ -427,3 +427,9 @@ body.resting header, body.resting #board, body.resting #fbtn, body.resting #sbtn
 
 /* Shabbat night (23:00-06:00): dimmer words, the sky stays */
 body.rest-late .rcenter, body.rest-late #rclock { opacity: .55; transition: opacity 3s; }
+
+/* Bellefair numbers (Yosya's pick): the big clock and the Shabbat / Yom Tov screen. */
+h1#clock { font-family: 'Bellefair', serif; font-weight: 400; font-size: 54px; letter-spacing: 0; line-height: 1; }
+#rtimes, #rclock { font-family: 'Bellefair', serif; }
+#rtimes { font-size: 38px; }
+#rclock { font-size: 26px; }
