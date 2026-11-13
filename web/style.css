@@ -300,3 +300,57 @@ input, textarea { -webkit-user-select: text; user-select: text; }
          background: var(--ok); color: #fff; font-weight: 600; }
 .fsend:disabled { opacity: .3; cursor: default; }
 #undo[hidden] { display: none; }
+
+/* ---------- Shabbat / Yom Tov scene (rest.js) ---------- */
+@font-face { font-family: 'Frank Ruhl Libre'; font-weight: 500; font-display: block;
+  src: url('fonts/frank-ruhl-libre-hebrew-500.woff2') format('woff2'); unicode-range: U+0590-05FF, U+FB1D-FB4F; }
+@font-face { font-family: 'Frank Ruhl Libre'; font-weight: 400; font-display: block;
+  src: url('fonts/frank-ruhl-libre-latin-400.woff2') format('woff2'); unicode-range: U+0000-00FF; }
+
+#rest {
+  position: fixed; top: -20px; right: -20px; bottom: -20px; left: -20px; z-index: 40;
+  overflow: hidden; opacity: 0; pointer-events: none; color: var(--ink);
+  transition: opacity 4s ease;
+}
+body.resting #rest { opacity: 1; pointer-events: auto; }
+header, #board, #fbtn { transition: opacity 3s ease, filter 3s ease; }
+body.resting header, body.resting #board, body.resting #fbtn { opacity: 0; filter: blur(6px); pointer-events: none; }
+
+#stars { position: absolute; inset: 0; transition: opacity 2s linear; }
+#stars i { position: absolute; border-radius: 50%; background: #fff; animation: twinkle 6s ease-in-out infinite; }
+@keyframes twinkle { 0%, 100% { transform: scale(1); } 50% { transform: scale(.55); } }
+
+#sun {
+  position: absolute; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%;
+  background: radial-gradient(circle, var(--sun, #fff4d6) 0 28%, rgba(255,236,190,.55) 34%, rgba(255,220,160,0) 70%);
+  transition: opacity 2s linear;
+}
+#moon {
+  position: absolute; right: 13%; top: 14%; width: 64px; height: 64px; border-radius: 50%;
+  box-shadow: -14px 10px 0 0 #f6efd8; transform: rotate(-20deg); filter: drop-shadow(0 0 12px rgba(246,239,216,.35));
+  transition: opacity 2s linear;
+}
+
+.rcenter {
+  position: absolute; left: 0; right: 0; top: 46%; transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+}
+#rtitle {
+  font-family: 'Frank Ruhl Libre', 'Noto Serif Hebrew', serif; font-weight: 500;
+  font-size: 150px; line-height: 1; letter-spacing: 1px; text-shadow: 0 2px 30px var(--glow);
+}
+#rsub { font-family: 'Frank Ruhl Libre', 'Noto Serif Hebrew', serif; font-size: 34px; opacity: .8; min-height: 1em; }
+#rtimes { display: flex; gap: 34px; margin-top: 22px; font-size: 30px; font-variant-numeric: tabular-nums; }
+.rt { display: inline-flex; align-items: center; gap: 10px; }
+.rt svg { width: 34px; height: 34px; }
+#rclock { position: absolute; left: 0; right: 0; bottom: 48px; text-align: center; font-size: 22px; opacity: .55; font-variant-numeric: tabular-nums; }
+
+/* preview controls (?rest=1 only) */
+#rpreview {
+  position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 60;
+  display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 14px;
+  background: rgba(0,0,0,.55); color: #fff; font-size: 15px;
+}
+#rpreview input { width: 380px; }
+#rpreview button { font: inherit; color: #fff; background: rgba(255,255,255,.15); border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+#rslabel { width: 46px; font-variant-numeric: tabular-nums; }

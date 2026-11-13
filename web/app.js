@@ -785,10 +785,12 @@
     fetch('https://www.hebcal.com/shabbat?cfg=json&M=on&geonameid=' + g)
       .then(function (r) { return r.json(); })
       .then(function (d) {
+        // candles + havdalah for the corner; Yom Tov names and the parasha for the Shabbat scene (rest.js)
         shabbat = (d.items || [])
-          .filter(function (i) { return i.category === 'candles' || i.category === 'havdalah'; })
-          .map(function (i) { return { category: i.category, date: i.date }; });
+          .filter(function (i) { return ['candles', 'havdalah', 'holiday', 'parashat'].indexOf(i.category) >= 0; })
+          .map(function (i) { return { category: i.category, date: i.date, title: i.title, hebrew: i.hebrew, yomtov: !!i.yomtov }; });
         save('kd.shabbat', shabbat); renderShabbat();
+        if (window.KDRest) window.KDRest.setItems(shabbat);
       }).catch(function () { /* offline: keep the cached times */ });
   }
 
