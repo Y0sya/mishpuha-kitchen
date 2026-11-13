@@ -181,11 +181,41 @@
     return -1.6 + 5.8 * t * t * (3 - 2 * t) - (moonUp ? 1.5 * moonLit : 0);
   }
 
+  // How hard stars twinkle overall. Twinkling comes from turbulence high up (the jet stream):
+  // over southern Ontario that's strongest in winter, calmest in summer, and it changes night to
+  // night. Season: a yearly curve (×1.35 mid-January … ×0.65 mid-July). Tonight: the real wind at
+  // 250 hPa (~10 km up) from open-meteo.com, when known for that hour.
+  var seeing = load('kd.seeing', {});        // 'YYYY-MM-DDTHH:00' -> jet wind km/h
+  var seeingAt = 0;
+  function seasonFactor(at) {
+    var start = new Date(at.getFullYear(), 0, 1), doy = (at - start) / 864e5;
+    return 1 + 0.35 * Math.cos(2 * Math.PI * (doy - 15) / 365.25);
+  }
+  function twinkleFactor(at) {
+    var key = ymd(at) + 'T' + pad(at.getHours()) + ':00', jet = seeing[key], season = seasonFactor(at);
+    if (jet == null) return season;
+    var weather = Math.min(1.9, Math.max(0.55, 0.55 + jet / 180));   // calm ~30 km/h -> 0.7; strong jet 250 -> 1.9
+    return 0.4 * season + 0.6 * weather;
+  }
+  function fetchSeeing() {
+    if (!window.fetch || Date.now() - seeingAt < 3 * 3600e3) return;
+    seeingAt = Date.now();
+    var lat = (CFG.place || {}).lat || 43.84, lon = (CFG.place || {}).lon || -79.50;
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(2) + '&longitude=' + lon.toFixed(2) +
+          '&hourly=wind_speed_250hPa&past_days=1&forecast_days=3&timezone=auto')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var h = d.hourly || {}, out = {};
+        (h.time || []).forEach(function (t, i) { if (h.wind_speed_250hPa[i] != null) out[t] = h.wind_speed_250hPa[i]; });
+        seeing = out; save('kd.seeing', seeing); tick();
+      }).catch(function () { seeingAt = 0; });
+  }
+
   function placeSky(at, dark) {
     if (!starEls) buildStars();
     var L0 = lst(at), list = window.KD_STARS || [];
     var m = moonNow(at), mh = altAz(m.ra, m.dec, L0);
-    var lim = limitMag(dark, mh.alt > 0, (1 - Math.cos(m.elong * R)) / 2);
+    var lim = limitMag(dark, mh.alt > 0, (1 - Math.cos(m.elong * R)) / 2), tw = twinkleFactor(at);
     for (var i = 0; i < list.length; i++) {
       var h = altAz(list[i][0], list[i][1], L0), e = starEls[i];
       if (h.alt < 1 || h.az < 55 || h.az > 305) { e.style.display = 'none'; continue; }
@@ -196,7 +226,7 @@
       var mag = list[i][2] + 0.25 * (airmass - 1);
       var o = Math.min(1, Math.max(0, (lim - mag) / 1.2));
       if (o < 0.03) { e.style.display = 'none'; continue; }
-      var amp = Math.min(0.85, 0.08 + 0.13 * (airmass - 1));        // ~0.08 overhead, ~0.85 low down
+      var amp = Math.min(0.9, (0.08 + 0.13 * (airmass - 1)) * tw);  // ~0.08 overhead, strong low down; × season/tonight
       e.style.display = '';
       e.style.left = p.x.toFixed(2) + '%';
       e.style.top = p.y.toFixed(2) + '%';
@@ -338,10 +368,13 @@
   window.KDRest = {
     setItems: function (list) { items = list || []; tick(); },
     period: function (d) { return period(d); },   // for checking the switch times
+    twinkle: function (d) { return twinkleFactor(d || now()); },
     preview: startPreview,                         // Settings → Preview Shabbat / Yom Tov
   };
   items = (load('kd.shabbat', []) || []);
   fetchSun();
+  fetchSeeing();
+  setInterval(fetchSeeing, 3600e3);
   setInterval(tick, 30000);
   setInterval(function () { fetchSun(); }, 3 * 3600e3);
   if (PREVIEW) startPreview(/[?&]yt=/.test(location.search));
