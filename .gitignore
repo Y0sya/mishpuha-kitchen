@@ -1,0 +1,14 @@
+# Secrets and machine-specific files
+web/env.js
+android/secret.properties
+android/local.properties
+*.jks
+*.keystore
+.claude/settings.local.json
+
+# Build output
+android/.gradle/
+android/build/
+android/app/build/
+android/.kotlin/
+*.apk

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Kitchen</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1 id="clock">--:--</h1>
+    <span id="date"></span>
+  </header>
+
+  <main id="tiles"></main>
+
+  <footer id="week"></footer>
+
+  <div id="picker" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="picker-title">
+      <h2 id="picker-title"></h2>
+      <p class="hint">Who did it?</p>
+      <div id="people"></div>
+    </div>
+  </div>
+
+  <div id="toast" hidden><span id="toast-text"></span><button id="undo" type="button">Undo</button></div>
+
+  <div id="sleep" hidden></div>
+
+  <script src="env.js"></script><!-- Supabase URL + key; generated, not in git -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

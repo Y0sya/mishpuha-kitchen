@@ -1,0 +1,71 @@
+# Every push to main builds the tablet app. If Supabase is set up, the APK is published
+# to the "app" bucket and the tablet installs it by itself within 30 minutes.
+name: Build tablet app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::Secret KEYSTORE_B64 is missing (the app's signing key). Ask the repo owner."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kitchen.jks"
+
+      - name: Build APK
+        working-directory: android
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          KEYSTORE_FILE: ${{ runner.temp }}/kitchen.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/kitchen-$BUILD_NUMBER.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kitchen-${{ github.run_number }}
+          path: ${{ runner.temp }}/kitchen-${{ github.run_number }}.apk
+
+      - name: Publish to the tablet
+        env:
+          N: ${{ github.run_number }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_KEY" ]; then
+            echo "Supabase not configured; APK is only in the run's artifacts."; exit 0
+          fi
+          up() {  # up <name> <file> <content-type>
+            curl -fsS -X POST "$SUPABASE_URL/storage/v1/object/app/$1" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "x-upsert: true" -H "cache-control: max-age=60" -H "Content-Type: $3" \
+              --data-binary "@$2"
+            echo
+          }
+          up "kitchen-$N.apk" "$RUNNER_TEMP/kitchen-$N.apk" application/vnd.android.package-archive
+          printf '{"versionCode": %s, "apk": "%s/storage/v1/object/public/app/kitchen-%s.apk"}\n' "$N" "$SUPABASE_URL" "$N" > version.json
+          up version.json version.json application/json

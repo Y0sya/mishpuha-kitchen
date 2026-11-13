@@ -1,0 +1,105 @@
+/* Same palette and restraint as the life tracker; sized for fingers across a kitchen. */
+:root {
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --ring: rgba(11,11,11,0.10); --press: #ebeae5; --ok: #2e9e5b;
+  --shade: rgba(0,0,0,0.35);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --ring: rgba(255,255,255,0.10); --press: #2a2a28; --ok: #2ea36a;
+    --shade: rgba(0,0,0,0.6);
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; background: var(--page); color: var(--ink); }
+body {
+  font: 16px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  display: flex; flex-direction: column;
+  padding: 28px 32px 24px;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  touch-action: manipulation; overflow: hidden;
+}
+button { font: inherit; color: inherit; }
+
+header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 24px; }
+h1 { margin: 0; font-size: 44px; font-weight: 600; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+#date { font-size: 20px; color: var(--muted); }
+
+/* Chore tiles */
+#tiles {
+  flex: 1; min-height: 0;
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 1fr;
+}
+@media (orientation: portrait) { #tiles { grid-template-columns: repeat(2, 1fr); } }
+
+.tile {
+  position: relative;
+  display: flex; flex-direction: column; justify-content: space-between; text-align: left;
+  padding: 20px 22px; border-radius: 18px;
+  background: var(--surface); border: 1px solid var(--ring);
+  cursor: pointer; transition: transform .08s ease, background .15s ease;
+}
+.tile:active { transform: scale(0.97); background: var(--press); }
+.tile .name { font-size: 28px; font-weight: 600; letter-spacing: -0.3px; }
+.tile .last { display: flex; align-items: center; gap: 8px; font-size: 17px; color: var(--muted); min-height: 22px; }
+.tile .last b { font-weight: 500; color: var(--ink2); }
+.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; display: inline-block; }
+.tile.today { border-color: transparent; box-shadow: inset 0 0 0 2px var(--tc, var(--ok)); }
+.tile.flash { animation: flash .9s ease; }
+@keyframes flash { 0% { background: var(--tc); } 100% { background: var(--surface); } }
+
+/* This week, per person */
+footer { display: flex; gap: 28px; margin-top: 22px; font-size: 18px; color: var(--ink2); align-items: center; }
+footer .label { color: var(--muted); }
+footer .who { display: flex; align-items: center; gap: 8px; }
+footer .n { font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Name picker */
+#picker {
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 10;
+  background: var(--shade);
+  display: flex; align-items: center; justify-content: center;
+  animation: fade .12s ease;
+}
+#picker[hidden] { display: none; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.sheet {
+  background: var(--surface); border-radius: 24px; padding: 32px 36px 36px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.25); max-width: calc(100vw - 48px);
+}
+.sheet h2 { margin: 0; font-size: 32px; font-weight: 600; text-align: center; }
+.sheet .hint { margin: 6px 0 28px; text-align: center; color: var(--muted); font-size: 18px; }
+#people { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+.person {
+  width: 150px; padding: 18px 8px 16px; border-radius: 20px;
+  background: transparent; border: 1px solid var(--ring); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  transition: transform .08s ease;
+}
+.person:active { transform: scale(0.95); background: var(--press); }
+.person .avatar {
+  width: 84px; height: 84px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 38px; font-weight: 600;
+}
+.person .pname { font-size: 22px; font-weight: 500; }
+
+/* Night: pure black (AMOLED pixels off). Tap to wake. */
+#sleep { position: fixed; top: -20px; right: -20px; bottom: -20px; left: -20px; z-index: 50; background: #000; }
+#sleep[hidden] { display: none; }
+body { transition: transform 2s ease; }
+
+/* Undo toast */
+#toast {
+  position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); z-index: 20;
+  display: flex; align-items: center; gap: 18px;
+  padding: 12px 12px 12px 24px; border-radius: 999px;
+  background: var(--ink); color: var(--page); font-size: 19px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.25);
+}
+#toast[hidden] { display: none; }
+#undo { background: transparent; color: var(--page); border: 1px solid rgba(127,127,127,.5); border-radius: 999px; padding: 8px 18px; font-size: 17px; cursor: pointer; }
