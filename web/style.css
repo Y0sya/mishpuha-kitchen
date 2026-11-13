@@ -302,10 +302,10 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 #undo[hidden] { display: none; }
 
 /* ---------- Shabbat / Yom Tov scene (rest.js) ---------- */
-@font-face { font-family: 'Frank Ruhl Libre'; font-weight: 500; font-display: block;
-  src: url('fonts/frank-ruhl-libre-hebrew-500.woff2') format('woff2'); unicode-range: U+0590-05FF, U+FB1D-FB4F; }
-@font-face { font-family: 'Frank Ruhl Libre'; font-weight: 400; font-display: block;
-  src: url('fonts/frank-ruhl-libre-latin-400.woff2') format('woff2'); unicode-range: U+0000-00FF; }
+@font-face { font-family: 'Bellefair'; font-weight: 400; font-display: block;
+  src: url('fonts/bellefair-hebrew-400.woff2') format('woff2'); unicode-range: U+0590-05FF, U+FB1D-FB4F; }
+@font-face { font-family: 'Bellefair'; font-weight: 400; font-display: block;
+  src: url('fonts/bellefair-latin-400.woff2') format('woff2'); unicode-range: U+0000-00FF; }
 
 #rest {
   position: fixed; top: -20px; right: -20px; bottom: -20px; left: -20px; z-index: 40;
@@ -348,10 +348,10 @@ body.resting header, body.resting #board, body.resting #fbtn, body.resting #sbtn
   display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
 }
 #rtitle {
-  font-family: 'Frank Ruhl Libre', 'Noto Serif Hebrew', serif; font-weight: 500;
-  font-size: 150px; line-height: 1; letter-spacing: 1px; text-shadow: 0 2px 30px var(--glow);
+  font-family: 'Bellefair', 'Noto Serif Hebrew', serif; font-weight: 400;
+  font-size: 128px; line-height: 1.05; letter-spacing: 1px; text-shadow: 0 2px 30px var(--glow);
 }
-#rsub { font-family: 'Frank Ruhl Libre', 'Noto Serif Hebrew', serif; font-size: 34px; opacity: .8; min-height: 1em; }
+#rsub { font-family: 'Bellefair', 'Noto Serif Hebrew', serif; font-size: 40px; opacity: .85; min-height: 1em; }
 #rtimes { display: flex; gap: 34px; margin-top: 22px; font-size: 30px; font-variant-numeric: tabular-nums; }
 .rt { display: inline-flex; align-items: center; gap: 10px; }
 .rt svg { width: 34px; height: 34px; }
@@ -368,7 +368,7 @@ body.resting header, body.resting #board, body.resting #fbtn, body.resting #sbtn
 #rslabel { width: 46px; font-variant-numeric: tabular-nums; }
 
 /* Hebrew date next to the civil date */
-#hdate { font-family: 'Frank Ruhl Libre', 'Noto Serif Hebrew', serif; font-size: 22px; color: var(--muted); }
+#hdate { font-family: 'Bellefair', 'Noto Serif Hebrew', serif; font-size: 24px; color: var(--muted); }
 
 /* ---------- Settings: gear, PIN pad, settings sheet ---------- */
 #sbtn {

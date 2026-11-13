@@ -51,16 +51,29 @@
     return null;
   }
 
-  // The Hebrew name: the Yom Tov whose day it is (evening counts as the next day), else שבת.
+  // Which day it is for the title: from candle lighting on, it's already the next day
+  // (in winter that's before 17:00, so a fixed evening hour won't do).
+  function holyDay(at, list) {
+    var t = at.getTime(), lit = list.filter(function (i) {
+      var c = new Date(i.date);
+      return i.category === 'candles' && c.getTime() <= t && ymd(c) === ymd(at);
+    }).length;
+    var d = new Date(at); d.setHours(12, 0, 0, 0);
+    if (lit) d = new Date(d.getTime() + 864e5);
+    return d;
+  }
+
+  // Title: the Yom Tov's Hebrew name, or on a plain Shabbat the parasha. When a Yom Tov falls on
+  // Shabbat, the parasha (or שבת, when that week has none) goes underneath.
   function names(at) {
-    var dayKey = ymd(new Date(at.getTime() + 6 * 3600e3));
-    var list = active();
+    var list = active(), day = holyDay(at, list), dayKey = ymd(day), isShabbat = day.getDay() === 6;
     var yt = list.filter(function (i) { return i.category === 'holiday' && i.yomtov && i.date.slice(0, 10) === dayKey; })[0];
-    var strip = function (s) { return String(s || '').replace(/\s+ת[א-ת]*״[א-ת]$/, ''); };  // drop the year (תשפ״ז)
-    if (previewYomTov && !previewItems) return { title: 'ראש השנה', sub: '' };   // until its data arrives
-    if (yt) return { title: strip(yt.hebrew || yt.title), sub: '' };
+    var strip = function (s) { return String(s || '').replace(/\s+ת[\u05d0-\u05ea]*״[\u05d0-\u05ea]$/, ''); };  // drop the year (תשפ״ז)
     var par = list.filter(function (i) { return i.category === 'parashat'; })[0];
-    return { title: 'שבת', sub: par && par.hebrew ? par.hebrew : '' };
+    var parName = par && par.hebrew ? par.hebrew : '';
+    if (previewYomTov && !previewItems) return { title: 'ראש השנה', sub: '' };   // until its data arrives
+    if (yt) return { title: strip(yt.hebrew || yt.title), sub: isShabbat ? (parName || 'שבת') : '' };
+    return { title: parName || 'שבת', sub: '' };
   }
 
   // ---------- the sky ----------
