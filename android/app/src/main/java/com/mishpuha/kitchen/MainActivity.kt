@@ -8,6 +8,8 @@ import android.os.Looper
 import android.view.View
 import android.view.WindowManager
 import android.webkit.JavascriptInterface
+import android.webkit.PermissionRequest
+import android.webkit.WebChromeClient
 import java.io.File
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -40,6 +42,14 @@ class MainActivity : Activity() {
             isHapticFeedbackEnabled = false
             isLongClickable = false
             setOnLongClickListener { true }            // no text-selection popups
+            // Let the page use the camera (Settings → People). Only our own bundled page runs here.
+            webChromeClient = object : WebChromeClient() {
+                override fun onPermissionRequest(request: PermissionRequest) {
+                    val ok = request.resources.filter { it == PermissionRequest.RESOURCE_VIDEO_CAPTURE }
+                    if (ok.isNotEmpty() && request.origin.toString().startsWith("file:")) request.grant(ok.toTypedArray())
+                    else request.deny()
+                }
+            }
             webViewClient = object : WebViewClient() {
                 // Never navigate away from the bundled page.
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) =
@@ -66,6 +76,11 @@ class MainActivity : Activity() {
         hideBars()
         Kiosk.configure(this)   // cheap and idempotent; a device-owner app is rarely restarted
         Kiosk.lock(this)
+        // Not device owner (e.g. a test install): ask for the camera the normal way.
+        if (checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED &&
+            !Kiosk.isOwner(this)) {
+            requestPermissions(arrayOf(android.Manifest.permission.CAMERA), 1)
+        }
         web.onResume()
     }
 

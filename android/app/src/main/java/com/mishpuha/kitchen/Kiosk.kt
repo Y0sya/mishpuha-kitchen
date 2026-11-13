@@ -39,6 +39,11 @@ object Kiosk {
         step("statusBar") { d.setStatusBarDisabled(a, true) }
         // Screen stays on whenever the charger is connected (AC, USB, wireless).
         step("stayOn") { d.setGlobalSetting(a, Settings.Global.STAY_ON_WHILE_PLUGGED_IN, "7") }
+        // Camera for people's selfies, granted silently (no prompt on a locked kiosk).
+        step("camera") {
+            d.setPermissionGrantState(a, ctx.packageName, android.Manifest.permission.CAMERA,
+                DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED)
+        }
     }
 
     fun lock(activity: Activity) {
