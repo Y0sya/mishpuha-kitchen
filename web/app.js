@@ -137,11 +137,21 @@
 
   // ---------- actions ----------
   // actions: e.g. ['Unload', 'Reload'] for the dishwasher (one row each); omit for most chores.
+  // The same person logging the same thing again within 5 minutes is a double tap: ignored.
+  var REPEAT_MS = 5 * 60000;
+  function isRepeat(c, p, a) {
+    var cutoff = Date.now() - REPEAT_MS;
+    return state.log.some(function (r) {
+      return r.chore_id === c && r.person_id === p && (r.action || null) === (a || null) &&
+        new Date(r.done_at).getTime() > cutoff;
+    });
+  }
   function record(choreIds, personIds, actions) {
     var now = new Date().toISOString(), rows = [];
     choreIds.forEach(function (c) {
       personIds.forEach(function (p) {
         (actions && actions.length ? actions : [null]).forEach(function (a) {
+          if (isRepeat(c, p, a)) return;
           var row = { id: uuid(), chore_id: c, person_id: p, done_at: now };
           if (a) row.action = a;
           rows.push(row);
@@ -184,15 +194,18 @@
     $('date').textContent = DAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate();
   }
 
-  // Latest entry among these chores: who (everyone logged in that same tap), what, when.
-  function latest(choreIds) {
+  // Latest entry among these chores: who, what, when. Entries up to `windowMs` before it count
+  // as the same go: 1 s (one tap) normally; for the dishwasher a few hours, so Unload then
+  // Reload shows as Both.
+  function latest(choreIds, windowMs) {
     var ids = {}; choreIds.forEach(function (c) { ids[c] = 1; });
-    var top = null;
+    var top = null, win = windowMs || 1000;
     state.log.forEach(function (r) { if (ids[r.chore_id] && (!top || r.done_at > top.done_at)) top = r; });
     if (!top) return null;
     var t = new Date(top.done_at).getTime(), people = [], what = [], acts = [];
     state.log.forEach(function (r) {
-      if (!ids[r.chore_id] || Math.abs(new Date(r.done_at).getTime() - t) > 1000) return;   // same tap
+      var rt = new Date(r.done_at).getTime();
+      if (!ids[r.chore_id] || rt > t + 1000 || rt < t - win) return;
       if (people.indexOf(r.person_id) < 0) people.push(r.person_id);
       if (what.indexOf(r.chore_id) < 0) what.push(r.chore_id);
       if (r.action && acts.indexOf(r.action) < 0) acts.push(r.action);
@@ -213,8 +226,9 @@
 
   // Bottom of a tile: who (coloured initials), what (small icons, trash only), how long ago.
   // Also rings the tile in the person's colour if it was done today.
-  function lastBlock(box, choreIds, chores) {
-    var info = latest(choreIds), wrap = el('span', 'last');
+  var CYCLE_MS = 3 * 3600e3;   // dishwasher Unload + Reload, or trash bins, within 3 h show together
+  function lastBlock(box, choreIds, chores, windowMs) {
+    var info = latest(choreIds, windowMs), wrap = el('span', 'last');
     if (!info) return wrap;
     info.people.forEach(function (p) { wrap.appendChild(badge(p)); });
     if (chores) info.what.forEach(function (id) {
@@ -249,7 +263,7 @@
           h.style.background = tint(c.color, 0.12);
           var ic = icon(c.icon, c.name, 'hicon'); ic.style.color = c.color;
           h.appendChild(ic);
-          h.appendChild(lastBlock(h, [c.id]));
+          h.appendChild(lastBlock(h, [c.id], null, c.actions && c.actions.length ? CYCLE_MS : 0));
           if (flash[c.id]) h.classList.add('flash');
           holdable(h, function () { openHistory(t, [c]); });
           h.addEventListener('click', function () { openFlow(t, [c]); });
@@ -265,7 +279,7 @@
       b.appendChild(icon(t.icon, t.name, 'main'));
       var byId = null;
       if (t.mode === 'choose') { byId = {}; t.chores.forEach(function (c) { byId[c.id] = c; }); }
-      b.appendChild(lastBlock(b, ids, byId));
+      b.appendChild(lastBlock(b, ids, byId, t.mode === 'choose' ? CYCLE_MS : 0));   // trash: bins taken out together
       if (ids.some(function (id) { return flash[id]; })) b.classList.add('flash');
       holdable(b, function () { openHistory(t, t.chores); });
       b.addEventListener('click', function () { openFlow(t, t.mode === 'choose' ? null : t.chores); });
