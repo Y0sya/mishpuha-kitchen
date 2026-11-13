@@ -65,6 +65,7 @@
     shop: load('kd.shop', []),        // open grocery rows [{id, item, people:[ids], kind:'finished'|'request', source, added_at, bought_at}]
     seen: load('kd.shopnames', {}),   // every item ever listed → {name, n}, for suggestions
   };
+  var photos = load('kd.photos', {});   // person id -> small JPEG data URL (selfie)
   function persist() {
     save('kd.log', state.log); save('kd.outbox', state.outbox);
     save('kd.shop', state.shop); save('kd.shopnames', state.seen);
@@ -88,7 +89,9 @@
     if (!REMOTE || flushing || !state.outbox.length) return Promise.resolve();
     flushing = true;
     var job = state.outbox[0], p;
-    if (job.table === 'feedback') {
+    if (job.table === 'photo') {
+      p = api('PATCH', 'family?id=eq.' + encodeURIComponent(job.row.id), { photo: job.row.photo }, 'return=minimal');
+    } else if (job.table === 'feedback') {
       p = api('POST', 'feedback?on_conflict=id', job.row, 'resolution=ignore-duplicates,return=minimal');
     } else if (job.table === 'shopping') {
       p = job.op === 'put'
@@ -108,7 +111,7 @@
     if (!REMOTE) return Promise.resolve();
     var since = new Date(Date.now() - LOG_DAYS * 864e5).toISOString();
     return Promise.all([
-      api('GET', 'family?select=id,name,color,initials&order=sort'),
+      api('GET', 'family?select=id,name,color,initials,photo&order=sort'),
       api('GET', 'tiles?select=id,name,icon,mode&active=is.true&order=sort'),
       api('GET', 'chores?select=id,tile_id,name,icon,color,actions&active=is.true&order=sort'),
       api('GET', 'chore_log?select=id,chore_id,person_id,action,done_at&done_at=gte.' + since + '&order=done_at.desc&limit=3000'),
@@ -245,10 +248,13 @@
   }
 
   // A person's coloured initial.
+  // A person's circle: their photo if they took one (Settings -> People), else coloured initials.
+  function photoOf(p) { return photos[p.id] || p.photo || null; }
   function badge(p, cls) {
-    var ini = (p.initials || p.name.charAt(0)).toUpperCase();
-    var b = el('span', (cls || 'badge') + (ini.length > 1 ? ' two' : ''), ini);
+    var ini = (p.initials || p.name.charAt(0)).toUpperCase(), ph = photoOf(p);
+    var b = el('span', (cls || 'badge') + (ph ? ' photo' : ini.length > 1 ? ' two' : ''), ph ? '' : ini);
     b.style.background = p.color;
+    if (ph) { b.style.backgroundImage = 'url(' + ph + ')'; b.style.setProperty('--pc', p.color); }
     b.title = p.name;
     return b;
   }
@@ -775,7 +781,7 @@
 
   // ---------- settings (gear → PIN → Settings) ----------
   var pinTyped = '', pinTimer = null;
-  function closeSheets() { $('psheet').hidden = true; $('ssheet').hidden = true; clearTimeout(pinTimer); }
+  function closeSheets() { $('psheet').hidden = true; $('ssheet').hidden = true; $('speople').hidden = true; clearTimeout(pinTimer); }
   function drawDots(bad) {
     [].forEach.call($('pdots').children, function (d, i) { d.className = i < pinTyped.length ? 'on' : ''; });
     $('pdots').classList.toggle('bad', !!bad);
@@ -812,6 +818,74 @@
   $('sclose').addEventListener('click', closeSheets);
   $('sprevshabbat').addEventListener('click', function () { closeSheets(); if (window.KDRest) window.KDRest.preview(false); });
   $('sprevyt').addEventListener('click', function () { closeSheets(); if (window.KDRest) window.KDRest.preview(true); });
+
+  // ---------- Settings -> People: take a selfie for someone's circle ----------
+  function drawPeople() {
+    var box = $('speople');
+    box.innerHTML = '';
+    state.family.forEach(function (p) {
+      var b = el('button', 'option person');
+      b.type = 'button';
+      b.appendChild(badge(p, 'avatar'));
+      b.appendChild(el('span', 'oname', p.name));
+      b.addEventListener('click', function () { openCamera(p); });
+      box.appendChild(b);
+    });
+  }
+  $('speoplebtn').addEventListener('click', function () {
+    var open = $('speople').hidden;
+    $('speople').hidden = !open;
+    if (open) drawPeople();
+  });
+
+  var camStream = null, camPerson = null, camShot = null;
+  function stopCamera() {
+    if (camStream) camStream.getTracks().forEach(function (t) { t.stop(); });
+    camStream = null;
+  }
+  function closeCamera() { stopCamera(); $('camsheet').hidden = true; }
+  function camMode(taken) {
+    $('camvideo').hidden = taken; $('camimg').hidden = !taken;
+    $('camshoot').hidden = taken; $('camretake').hidden = !taken; $('camuse').hidden = !taken;
+  }
+  function startCamera() {
+    camShot = null; camMode(false);
+    $('camerr').textContent = '';
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('camerr').textContent = 'No camera'; return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }, audio: false })
+      .then(function (s) { camStream = s; $('camvideo').srcObject = s; $('camvideo').play(); })
+      .catch(function (e) { $('camerr').textContent = 'Camera not available (' + ((e && e.name) || 'error') + ')'; });
+  }
+  function openCamera(p) {
+    camPerson = p;
+    $('camname').textContent = p.name;
+    $('camremove').hidden = !photoOf(p);
+    $('camsheet').hidden = false;
+    startCamera();
+  }
+  $('camshoot').addEventListener('click', function () {
+    var v = $('camvideo'), w = v.videoWidth, h = v.videoHeight;
+    if (!w || !h) return;
+    var side = Math.min(w, h), c = document.createElement('canvas');
+    c.width = c.height = 256;
+    var g = c.getContext('2d');
+    g.translate(256, 0); g.scale(-1, 1);                 // keep it mirrored, like the preview
+    g.drawImage(v, (w - side) / 2, (h - side) / 2, side, side, 0, 0, 256, 256);
+    camShot = c.toDataURL('image/jpeg', 0.8);
+    $('camimg').src = camShot;
+    camMode(true);
+  });
+  $('camretake').addEventListener('click', function () { camShot = null; camMode(false); });
+  function setPhoto(p, data) {
+    if (data) photos[p.id] = data; else delete photos[p.id];
+    p.photo = data || null;
+    save('kd.photos', photos);
+    if (REMOTE) { state.outbox.push({ table: 'photo', op: 'put', row: { id: p.id, photo: data || null } }); persist(); flush(); }
+    render(); renderGrocery(); drawPeople();
+  }
+  $('camuse').addEventListener('click', function () { if (camShot) setPhoto(camPerson, camShot); closeCamera(); });
+  $('camremove').addEventListener('click', function () { setPhoto(camPerson, null); closeCamera(); });
+  $('camcancel').addEventListener('click', closeCamera);
 
   // ---------- candle lighting & havdalah (hebcal.com) ----------
   var shabbat = load('kd.shabbat', null);

@@ -10,8 +10,10 @@
   var ICONS = window.KD_ICONS || {};
   var PREVIEW = /[?&]rest=/.test(location.search);
   var items = [];
-  var sun = load('kd.sun', null);            // {date:'YYYY-MM-DD', sunrise:'ISO', sunset:'ISO'}
-  var previewMin = null, previewYomTov = false;
+  var suns = load('kd.suns', {});            // 'YYYY-MM-DD' -> {sunrise:'ISO', sunset:'ISO'} (hebcal zmanim)
+  var sunPending = {};
+  // Preview: a real date (the coming Shabbat, or the next Rosh Hashana) + minutes from its midnight.
+  var previewMin = null, previewYomTov = false, previewDay = null, previewItems = null;
 
   function load(k, d) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } }
   function save(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -23,13 +25,14 @@
 
   function now() {
     if (previewMin == null) return new Date();
-    var d = new Date(); d.setHours(0, 0, 0, 0);
+    var d = previewDay ? new Date(previewDay) : new Date(); d.setHours(0, 0, 0, 0);
     return new Date(d.getTime() + previewMin * 60000);
   }
+  function active() { return PREVIEW && previewItems ? previewItems : items; }
 
   // ---------- is it Shabbat / Yom Tov right now? ----------
   function period(at) {
-    var t = at.getTime(), sorted = items.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var t = at.getTime(), sorted = active().slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
     var start = null, end = null;
     sorted.forEach(function (i) {
       var it = new Date(i.date).getTime();
@@ -51,11 +54,12 @@
   // The Hebrew name: the Yom Tov whose day it is (evening counts as the next day), else שבת.
   function names(at) {
     var dayKey = ymd(new Date(at.getTime() + 6 * 3600e3));
-    var yt = items.filter(function (i) { return i.category === 'holiday' && i.yomtov && i.date.slice(0, 10) === dayKey; })[0];
+    var list = active();
+    var yt = list.filter(function (i) { return i.category === 'holiday' && i.yomtov && i.date.slice(0, 10) === dayKey; })[0];
     var strip = function (s) { return String(s || '').replace(/\s+ת[א-ת]*״[א-ת]$/, ''); };  // drop the year (תשפ״ז)
-    if (previewYomTov) return { title: 'ראש השנה', sub: '' };
+    if (previewYomTov && !previewItems) return { title: 'ראש השנה', sub: '' };   // until its data arrives
     if (yt) return { title: strip(yt.hebrew || yt.title), sub: '' };
-    var par = items.filter(function (i) { return i.category === 'parashat'; })[0];
+    var par = list.filter(function (i) { return i.category === 'parashat'; })[0];
     return { title: 'שבת', sub: par && par.hebrew ? par.hebrew : '' };
   }
 
@@ -83,7 +87,9 @@
   function minutes(d) { return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60; }
   function sunMinutes(at) {
     var sr = 7 * 60, ss = 17 * 60;   // fallback until zmanim arrive
+    var sun = suns[ymd(at)];
     if (sun && sun.sunrise && sun.sunset) { sr = minutes(new Date(sun.sunrise)); ss = minutes(new Date(sun.sunset)); }
+    else fetchSun(ymd(at));
     return { sr: sr, ss: ss };
   }
 
@@ -210,52 +216,97 @@
     paintSky(at);
   }
 
-  function fetchSun() {
-    var g = (CFG.hebcal || {}).geonameid, today = ymd(new Date());
-    if (!g || !window.fetch || (sun && sun.date === today)) return;
-    fetch('https://www.hebcal.com/zmanim?cfg=json&geonameid=' + g + '&date=' + today)
+  function fetchSun(day) {
+    var g = (CFG.hebcal || {}).geonameid;
+    day = day || ymd(new Date());
+    if (!g || !window.fetch || suns[day] || sunPending[day]) return;
+    sunPending[day] = 1;
+    fetch('https://www.hebcal.com/zmanim?cfg=json&geonameid=' + g + '&date=' + day)
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d.times) return;
-        sun = { date: today, sunrise: d.times.sunrise, sunset: d.times.sunset };
-        save('kd.sun', sun); tick();
-      }).catch(function () {});
+        suns[day] = { sunrise: d.times.sunrise, sunset: d.times.sunset };
+        var keep = {}; Object.keys(suns).sort().slice(-14).forEach(function (k) { keep[k] = suns[k]; }); suns = keep;
+        save('kd.suns', suns);
+        if (day === ymd(new Date())) save('kd.sun', { date: day, sunrise: d.times.sunrise, sunset: d.times.sunset });   // app.js: Hebrew date rolls at sunset
+        tick();
+      }).catch(function () {}).then(function () { delete sunPending[day]; });
   }
 
-  // ---------- preview controls (?rest=1 on a computer, or Settings → Preview on the tablet) ----------
-  var playTimer = null;
+  // ---------- preview controls (?rest=1 on a computer, or Settings -> Preview on the tablet) ----------
+  // Shabbat: the coming Friday evening through Saturday night. Yom Tov: the next Rosh Hashana,
+  // with that date's real sky, times and names.
+  var playTimer = null, SPAN = 0;
+  function nextRoshHashana() {
+    var f = new Intl.DateTimeFormat('he-u-ca-hebrew', { day: 'numeric', month: 'long' }), d = new Date();
+    d.setHours(12, 0, 0, 0);
+    for (var k = 0; k < 400; k++) {
+      var parts = f.formatToParts(d), day = 0, month = '';
+      parts.forEach(function (x) { if (x.type === 'day') day = +x.value; if (x.type === 'month') month = x.value; });
+      if (month === 'תשרי' && day === 1) return d;
+      d = new Date(d.getTime() + 864e5);
+    }
+    return null;
+  }
+  function firstCandles(list) {
+    return list.filter(function (i) { return i.category === 'candles'; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+  }
+  function startAt(list, fallbackDay) {   // open the preview 20 min after candle lighting
+    var c = firstCandles(list), d = c ? new Date(c.date) : fallbackDay;
+    previewDay = new Date(d); previewDay.setHours(0, 0, 0, 0);
+    previewMin = c ? d.getHours() * 60 + d.getMinutes() + 20 : 19 * 60 + 30;
+  }
   function previewBar() {
     var old = $('rpreview'); if (old) old.parentNode.removeChild(old);
+    clearInterval(playTimer); playTimer = null;
     var bar = document.createElement('div');
     bar.id = 'rpreview';
-    bar.innerHTML = '<input id="rslide" type="range" min="0" max="1439" step="1">' +
-      '<span id="rslabel"></span><button type="button" id="ryt"></button><button type="button" id="rplay">▶ Day</button>' +
+    bar.innerHTML = '<input id="rslide" type="range" min="0" step="1">' +
+      '<span id="rslabel"></span><button type="button" id="ryt"></button><button type="button" id="rplay">▶ Play</button>' +
       '<button type="button" id="rexit">Exit</button>';
     document.body.appendChild(bar);
-    var slide = $('rslide'), d = new Date();
-    if (previewMin == null) previewMin = d.getHours() * 60 + d.getMinutes();
-    slide.value = previewMin;
-    function set(v) { previewMin = +v; slide.value = v; $('rslabel').textContent = hhmm(now()); tick(); }
-    function label() { $('ryt').textContent = previewYomTov ? 'Shabbat' : 'Yom Tov'; }
-    label();
+    var slide = $('rslide');
+    slide.max = SPAN - 1;
+    function set(v) { previewMin = +v; slide.value = v; var t = now(); $('rslabel').textContent = DAYS[t.getDay()] + ' ' + hhmm(t); tick(); }
+    $('ryt').textContent = previewYomTov ? 'Shabbat' : 'Yom Tov';
     slide.addEventListener('input', function () { set(slide.value); });
-    $('ryt').addEventListener('click', function () { previewYomTov = !previewYomTov; label(); tick(); });
-    $('rplay').addEventListener('click', function () {   // whole day in ~24 s
-      if (playTimer) { clearInterval(playTimer); playTimer = null; this.textContent = '▶ Day'; return; }
+    $('ryt').addEventListener('click', function () { startPreview(!previewYomTov); });
+    $('rplay').addEventListener('click', function () {   // the whole span in ~half a minute
+      if (playTimer) { clearInterval(playTimer); playTimer = null; this.textContent = '▶ Play'; return; }
       this.textContent = '❚❚';
-      playTimer = setInterval(function () { set((previewMin + 1) % 1440); }, 16);
+      playTimer = setInterval(function () { set((previewMin + 2) % SPAN); }, 16);
     });
     $('rexit').addEventListener('click', stopPreview);
     set(previewMin);
   }
   function startPreview(yomTov) {
-    PREVIEW = true; previewYomTov = !!yomTov; previewMin = null;
+    PREVIEW = true; previewYomTov = !!yomTov; previewItems = null;
+    if (!yomTov) {
+      SPAN = 2 * 1440;                                   // Friday + Saturday
+      startAt(items, (function () { var d = new Date(); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7)); d.setHours(16, 30); return d; })());
+      previewBar();
+      return;
+    }
+    SPAN = 3 * 1440;                                     // erev Rosh Hashana + two days
+    var rh = nextRoshHashana(), erev = rh ? new Date(rh.getTime() - 864e5) : new Date();
+    startAt([], new Date(erev.getFullYear(), erev.getMonth(), erev.getDate(), 19, 0));
     previewBar();
+    var g = (CFG.hebcal || {}).geonameid;
+    if (!g || !rh) return;
+    fetch('https://www.hebcal.com/shabbat?cfg=json&M=on&geonameid=' + g + '&gy=' + erev.getFullYear() + '&gm=' + (erev.getMonth() + 1) + '&gd=' + erev.getDate())
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!previewYomTov) return;
+        previewItems = (d.items || []).filter(function (i) { return ['candles', 'havdalah', 'holiday', 'parashat'].indexOf(i.category) >= 0; })
+          .map(function (i) { return { category: i.category, date: i.date, title: i.title, hebrew: i.hebrew, yomtov: !!i.yomtov }; });
+        startAt(previewItems, erev);
+        previewBar();
+      }).catch(function () {});
   }
   function stopPreview() {
     clearInterval(playTimer); playTimer = null;
     var bar = $('rpreview'); if (bar) bar.parentNode.removeChild(bar);
-    PREVIEW = false; previewMin = null; previewYomTov = false;
+    PREVIEW = false; previewMin = null; previewYomTov = false; previewDay = null; previewItems = null;
     tick();
   }
 
@@ -267,7 +318,7 @@
   items = (load('kd.shabbat', []) || []);
   fetchSun();
   setInterval(tick, 30000);
-  setInterval(fetchSun, 3 * 3600e3);
-  if (PREVIEW) previewBar();
+  setInterval(function () { fetchSun(); }, 3 * 3600e3);
+  if (PREVIEW) startPreview(/[?&]yt=/.test(location.search));
   tick();
 })();

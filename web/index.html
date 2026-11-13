@@ -62,6 +62,8 @@
       <div class="ftop"><span id="sicon"></span><span id="stitle">Settings</span></div>
       <button type="button" class="sbig" id="sprevshabbat">Preview Shabbat</button>
       <button type="button" class="sbig" id="sprevyt">Preview Yom Tov</button>
+      <button type="button" class="sbig" id="speoplebtn">People photos</button>
+      <div id="speople" hidden></div>
       <div class="fbtns"><button type="button" class="hno" id="sclose">Close</button></div>
     </div>
   </div>
@@ -87,6 +89,25 @@
       <div id="rtimes"></div>
     </div>
     <div id="rclock"></div>
+  </div>
+
+  <!-- Selfie for a person's circle (front camera). -->
+  <div id="camsheet" hidden>
+    <div class="sheet camsheet" role="dialog" aria-modal="true" aria-labelledby="camname">
+      <div class="ftop"><span id="camname"></span></div>
+      <div class="camframe">
+        <video id="camvideo" autoplay playsinline muted></video>
+        <img id="camimg" alt="" hidden>
+        <div id="camerr"></div>
+      </div>
+      <div class="cambtns">
+        <button type="button" class="hno" id="camcancel">Cancel</button>
+        <button type="button" class="hno" id="camremove" hidden>Remove photo</button>
+        <button type="button" id="camshoot" aria-label="Take photo"></button>
+        <button type="button" class="hno" id="camretake" hidden>Retake</button>
+        <button type="button" class="fsend" id="camuse" hidden>Use photo</button>
+      </div>
+    </div>
   </div>
 
   <div id="sleep" hidden></div>

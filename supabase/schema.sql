@@ -6,6 +6,7 @@ create table if not exists family (
   name  text not null,
   color text not null default '#2a78d6',   -- tile/avatar colour
   initials text,                           -- shown in the circle; default first letter
+  photo text,                              -- selfie from the tablet (small JPEG data URL), replaces initials
   sort  int  not null default 0
 );
 
@@ -78,6 +79,10 @@ alter table shopping  enable row level security;
 alter table feedback  enable row level security;
 
 create policy "tablet reads family"    on family    for select to anon using (true);
+-- The tablet may change only people's photos (Settings -> People), nothing else about them.
+create policy "tablet sets photos"     on family    for update to anon using (true) with check (true);
+revoke update on family from anon;
+grant update (photo) on family to anon;
 create policy "tablet reads tiles"     on tiles     for select to anon using (true);
 create policy "tablet reads chores"    on chores    for select to anon using (true);
 create policy "tablet reads log"       on chore_log for select to anon using (true);
