@@ -172,7 +172,6 @@
     if (days < 7) return DAYS[t.getDay()].slice(0, 3);
     return MONTHS[t.getMonth()].slice(0, 3) + ' ' + t.getDate();
   }
-  function weekStart() { var d = startOfDay(new Date()); d.setDate(d.getDate() - d.getDay()); return d; } // Sunday
 
   // ---------- render ----------
   function renderClock() {
@@ -189,7 +188,7 @@
     if (!top) return null;
     var t = new Date(top.done_at).getTime(), people = [], what = [];
     state.log.forEach(function (r) {
-      if (!ids[r.chore_id] || Math.abs(new Date(r.done_at).getTime() - t) > 60000) return;
+      if (!ids[r.chore_id] || Math.abs(new Date(r.done_at).getTime() - t) > 1000) return;   // same tap
       if (people.indexOf(r.person_id) < 0) people.push(r.person_id);
       if (what.indexOf(r.chore_id) < 0) what.push(r.chore_id);
     });
@@ -245,6 +244,7 @@
           h.appendChild(ic);
           h.appendChild(lastBlock(h, [c.id]));
           if (flash[c.id]) h.classList.add('flash');
+          holdable(h, function () { openHistory(t, [c]); });
           h.addEventListener('click', function () { openFlow(t, [c]); });
           halves.appendChild(h);
         });
@@ -260,23 +260,11 @@
       if (t.mode === 'choose') { byId = {}; t.chores.forEach(function (c) { byId[c.id] = c; }); }
       b.appendChild(lastBlock(b, ids, byId));
       if (ids.some(function (id) { return flash[id]; })) b.classList.add('flash');
+      holdable(b, function () { openHistory(t, t.chores); });
       b.addEventListener('click', function () { openFlow(t, t.mode === 'choose' ? null : t.chores); });
       tiles.appendChild(b);
     });
 
-    var ws = weekStart().getTime(), counts = {};
-    state.log.forEach(function (r) { if (new Date(r.done_at).getTime() >= ws) counts[r.person_id] = (counts[r.person_id] || 0) + 1; });
-    var week = $('week');
-    week.innerHTML = '';
-    week.appendChild(el('span', 'label', 'This week'));
-    state.family.forEach(function (p) {
-      var w = el('span', 'who');
-      var dot = el('i', 'dot'); dot.style.background = p.color;
-      w.appendChild(dot);
-      w.appendChild(document.createTextNode(p.name + ' '));
-      w.appendChild(el('span', 'n', String(counts[p.id] || 0)));
-      week.appendChild(w);
-    });
   }
 
 
@@ -394,6 +382,93 @@
 
   // No long-press menus, no pinch, no accidental text selection.
   document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  // ---------- hold a tile: recent entries, remove one ----------
+  // Calls onHold after ~0.6 s of pressing, and swallows the tap that follows the release.
+  function holdable(node, onHold) {
+    var timer = null, held = false;
+    node.addEventListener('pointerdown', function () {
+      held = false;
+      clearTimeout(timer);
+      timer = setTimeout(function () { held = true; if (navigator.vibrate) navigator.vibrate(25); onHold(); }, 600);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (e) {
+      node.addEventListener(e, function () { clearTimeout(timer); });
+    });
+    node.addEventListener('click', function (ev) {
+      if (held) { held = false; ev.stopImmediatePropagation(); ev.preventDefault(); }
+    });
+  }
+
+  function when(iso) {   // "Today 14:17", "Thu 14:17", "Nov 3 14:17"
+    var d = new Date(iso), days = Math.round((startOfDay(new Date()) - startOfDay(d)) / 864e5);
+    var day = days === 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? DAYS[d.getDay()].slice(0, 3)
+      : MONTHS[d.getMonth()].slice(0, 3) + ' ' + d.getDate();
+    return day + ' ' + hhmm(iso);
+  }
+
+  function openHistory(tile, chores) {
+    var ids = {}, names = {};
+    chores.forEach(function (c) { ids[c.id] = 1; names[c.id] = c.name; });
+    var title = tile.name + (tile.mode === 'split' ? ' · ' + chores[0].name : '');
+    var rows = state.log.filter(function (r) { return ids[r.chore_id]; })
+      .sort(function (a, b) { return a.done_at < b.done_at ? 1 : -1; }).slice(0, 10);
+
+    var t = $('picker-title');
+    t.innerHTML = '';
+    t.appendChild(el('span', 'ptitle', title));
+    $('entry').hidden = true;
+    $('confirm').hidden = true;
+    $('picker').classList.remove('top');
+    var box = $('options');
+    box.innerHTML = '';
+    box.className = 'history';
+    if (!rows.length) box.appendChild(el('div', 'hempty', 'Nothing yet'));
+    rows.forEach(function (r) {
+      var p = person(r.person_id) || { name: '?', color: 'var(--muted)' };
+      var line = el('div', 'hrow');
+      line.appendChild(badge(p));
+      line.appendChild(el('span', 'hname', p.name));
+      if (tile.mode === 'choose') line.appendChild(el('span', 'hwhat', names[r.chore_id] || ''));
+      line.appendChild(el('span', 'hwhen', when(r.done_at)));
+      var x = el('button', 'hdel');
+      x.type = 'button';
+      x.setAttribute('aria-label', 'Remove');
+      x.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+      x.addEventListener('click', function (ev) {
+        ev.stopPropagation(); poke();
+        askRemove(tile, chores, r, p, (tile.mode === 'choose' ? names[r.chore_id] + ' · ' : '') + when(r.done_at));
+      });
+      line.appendChild(x);
+      box.appendChild(line);
+    });
+    showSheet();
+  }
+
+  function askRemove(tile, chores, row, p, what) {
+    var box = $('options');
+    box.innerHTML = '';
+    box.className = 'history';
+    var q = el('div', 'hask');
+    q.appendChild(el('div', 'hq', 'Are you sure?'));
+    var sum = el('div', 'hsum');
+    sum.appendChild(badge(p));
+    sum.appendChild(el('span', null, p.name + ' · ' + what));
+    q.appendChild(sum);
+    var btns = el('div', 'hbtns');
+    var no = el('button', 'hno', 'Cancel'); no.type = 'button';
+    var yes = el('button', 'hyes', 'Remove'); yes.type = 'button';
+    no.addEventListener('click', function (ev) { ev.stopPropagation(); openHistory(tile, chores); });
+    yes.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      undo([row]);
+      openHistory(tile, chores);
+    });
+    btns.appendChild(no); btns.appendChild(yes);
+    q.appendChild(btns);
+    box.appendChild(q);
+    poke();
+  }
 
   // ---------- groceries ----------
   // One running list. "Finished" and "Request" both put an item on it; if it's already

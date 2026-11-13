@@ -32,8 +32,8 @@ window.KD_CONFIG = {
       { name: 'Compost',   icon: 'compost',   color: '#2e9e5b' },
     ] },
   ],
-  // Candle lighting and havdalah times from hebcal.com. 6167865 = Toronto.
-  hebcal: { geonameid: 6167865 },
+  // Candle lighting and havdalah times from hebcal.com. 6173577 = Vaughan, Ontario.
+  hebcal: { geonameid: 6173577 },
   // The Tab S3 screen is AMOLED: a static image left on all night burns in.
   // Between these hours the screen goes black; a tap wakes it for 2 minutes.
   night: { from: 23, to: 6 },

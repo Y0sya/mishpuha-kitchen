@@ -68,7 +68,8 @@ create policy "tablet reads tiles"     on tiles     for select to anon using (tr
 create policy "tablet reads chores"    on chores    for select to anon using (true);
 create policy "tablet reads log"       on chore_log for select to anon using (true);
 create policy "tablet logs chores"     on chore_log for insert to anon with check (true);
-create policy "tablet undoes chores"   on chore_log for delete to anon using (done_at > now() - interval '1 day');
+-- Undo, and "hold a tile → remove an entry" (shows the last 10, within the 35 days the tablet loads).
+create policy "tablet removes chores"  on chore_log for delete to anon using (done_at > now() - interval '60 days');
 create policy "tablet reads shopping"  on shopping  for select to anon using (true);
 create policy "tablet adds shopping"   on shopping  for insert to anon with check (true);
 create policy "tablet ticks shopping"  on shopping  for update to anon using (true) with check (true);
