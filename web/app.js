@@ -330,7 +330,13 @@
 
   // onPick(person) replaces the default (record the chores) — used by groceries.
   function chooseWho(tile, chores, onPick) {
-    if (!onPick) setTitle(tile, tile.mode === 'single' ? null : chores);
+    if (!onPick) {
+      // Spell the chore out here, in case an icon on the tile isn't obvious.
+      var t = $('picker-title'), parts = [tile.name];
+      if (tile.mode !== 'single') parts.push(chores.map(function (c) { return c.name; }).join(', '));
+      t.innerHTML = '';
+      t.appendChild(el('span', 'ptitle', parts.join(' · ')));
+    }
     $('entry').hidden = true;
     $('picker').classList.remove('top');
     var box = $('options');

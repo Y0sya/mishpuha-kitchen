@@ -219,3 +219,5 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 .chip:active { background: var(--press); }
 .gpicked { font-size: 26px; font-weight: 600; }
 #picker-title { gap: 12px; }
+
+.ptitle { font-size: 30px; font-weight: 600; letter-spacing: -0.3px; text-align: center; }
